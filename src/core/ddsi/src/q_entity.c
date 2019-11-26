@@ -4402,7 +4402,6 @@ static int proxy_participant_check_security_info(struct q_globals *gv, struct pr
   return r;
 }
 
-
 static void proxy_participant_create_handshakes(struct q_globals *gv, struct proxy_participant *proxypp)
 {
   struct participant *pp;
@@ -5225,6 +5224,10 @@ int new_proxy_writer (struct q_globals *gv, const struct ddsi_guid *ppguid, cons
 
   local_reader_ary_init (&pwr->rdary);
 
+#ifdef DDSI_INCLUDE_SECURITY
+  q_omg_get_proxy_writer_security_info(pwr, plist, &(pwr->security_info));
+#endif
+
   /* locking the entity prevents matching while the built-in topic hasn't been published yet */
   ddsrt_mutex_lock (&pwr->e.lock);
   entidx_insert_proxy_writer_guid (gv->entity_index, pwr);
@@ -5514,6 +5517,7 @@ int new_proxy_reader (struct q_globals *gv, const struct ddsi_guid *ppguid, cons
   ddsrt_avl_init (&prd_writers_treedef, &prd->writers);
 
 #ifdef DDSI_INCLUDE_SECURITY
+  q_omg_get_proxy_reader_security_info(prd, plist, &(prd->security_info));
   if (prd->e.guid.entityid.u == NN_ENTITYID_P2P_BUILTIN_PARTICIPANT_VOLATILE_SECURE_READER)
     prd->filter = volatile_secure_data_filter;
   else
