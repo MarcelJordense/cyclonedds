@@ -1097,7 +1097,7 @@ q_omg_security_check_create_topic(
 
 inline int64_t
 q_omg_security_get_local_participant_handle(
-    UNUSED_ARG(struct participant *pp)
+    UNUSED_ARG(struct participant *pp))
 {
   return 0;
 }
@@ -1199,10 +1199,6 @@ q_omg_security_check_remote_writer_permissions(UNUSED_ARG(const struct proxy_wri
 }
 
 inline void q_omg_security_deregister_remote_writer_match(UNUSED_ARG(struct proxy_writer *pwr), UNUSED_ARG(struct reader *rd), UNUSED_ARG(struct rd_pwr_match *match))
-{
-}
-
-inline void q_omg_security_set_remote_writer_crypto_tokens(UNUSED_ARG(struct reader *rd), UNUSED_ARG(const ddsi_guid_t *pwr_guid), UNUSED_ARG(const nn_dataholderseq_t *tokens))
 {
 }
 
@@ -1323,7 +1319,6 @@ inline void q_omg_security_deregister_remote_reader_match(UNUSED_ARG(struct prox
 inline void q_omg_security_set_remote_reader_crypto_tokens(UNUSED_ARG(struct writer *wr), UNUSED_ARG(const ddsi_guid_t *prd_guid), UNUSED_ARG(const nn_dataholderseq_t *tokens))
 {
 }
-
 
 #endif /* DDSI_INCLUDE_SECURITY */
 

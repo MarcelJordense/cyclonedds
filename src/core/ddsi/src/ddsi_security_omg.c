@@ -877,11 +877,11 @@ q_omg_security_check_create_participant(
 {
   bool allowed = false;
   DDS_Security_IdentityHandle identity_handle = DDS_SECURITY_HANDLE_NIL;
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
   DDS_Security_ValidationResult_t result = 0;
   DDS_Security_IdentityToken identity_token;
-  DDS_Security_PermissionsToken permissions_token = {0};
-  DDS_Security_PermissionsCredentialToken credential_token = {0};
+  DDS_Security_PermissionsToken permissions_token = DDS_SECURITY_TOKEN_INIT;
+  DDS_Security_PermissionsCredentialToken credential_token = DDS_SECURITY_TOKEN_INIT;
   struct secure_context *sc;
   DDS_Security_Qos par_qos;
   ddsi_guid_t candidate_guid;
@@ -1017,7 +1017,7 @@ proxypp_pp_match_free(
     struct proxypp_pp_match *pm)
 {
   if (pm->permissions_handle != DDS_SECURITY_HANDLE_NIL) {
-    DDS_Security_SecurityException exception = {0};
+    DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
 
     if (!sc->access_control->return_permissions_handle(sc->access_control, pm->permissions_handle, &exception))
     {
@@ -1082,7 +1082,7 @@ void
 q_omg_security_deregister_participant(
     struct participant *pp)
 {
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
   struct secure_context *sc;
 
   assert(pp);
@@ -1192,8 +1192,8 @@ is_topic_discovery_protected(
     dds_security_access_control *access_control,
     const char *topic_name)
 {
-  DDS_Security_TopicSecurityAttributes attributes = {0};
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_TopicSecurityAttributes attributes = {0,0,0,0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
 
   if (access_control->get_topic_sec_attributes(access_control, permission_handle, topic_name, &attributes, &exception))
     return attributes.is_discovery_protected;
@@ -1210,7 +1210,7 @@ q_omg_security_check_create_topic(
     const struct dds_qos *qos)
 {
   struct secure_context *sc;
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
   DDS_Security_Qos topic_qos;
   bool result;
 
@@ -1260,7 +1260,7 @@ q_omg_security_check_create_writer(
     const struct dds_qos *writer_qos)
 {
   struct secure_context *sc;
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
   DDS_Security_PartitionQosPolicy partitions;
   DDS_Security_Qos security_qos;
   bool result;
@@ -1296,7 +1296,7 @@ q_omg_security_register_writer(
     struct writer *wr)
 {
   struct secure_context *sc;
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
   DDS_Security_PartitionQosPolicy partitions;
   DDS_Security_PropertySeq properties;
   struct participant *pp = NULL;
@@ -1353,7 +1353,7 @@ q_omg_security_deregister_writer(
     struct writer *wr)
 {
   struct secure_context *sc;
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
 
   assert(wr);
 
@@ -1409,7 +1409,7 @@ q_omg_security_check_create_reader(
     const struct dds_qos *reader_qos)
 {
   struct secure_context *sc;
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
   DDS_Security_PartitionQosPolicy partitions;
   DDS_Security_Qos security_qos;
   bool result;
@@ -1445,7 +1445,7 @@ q_omg_security_register_reader(
     struct reader *rd)
 {
   struct secure_context *sc;
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
   DDS_Security_PartitionQosPolicy partitions;
   DDS_Security_PropertySeq properties;
   struct participant *pp = NULL;
@@ -1500,7 +1500,7 @@ q_omg_security_deregister_reader(
     struct reader *rd)
 {
   struct secure_context *sc;
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
 
   assert(rd);
 
@@ -1554,10 +1554,10 @@ int64_t
 q_omg_security_check_remote_participant_permissions(uint32_t domain_id, struct participant *pp, struct proxy_participant *proxypp)
 {
   struct secure_context *sc;
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
   struct ddsi_handshake *handshake;
-  DDS_Security_PermissionsToken permissions_token = {0};
-  DDS_Security_AuthenticatedPeerCredentialToken peer_credential_token = {0};
+  DDS_Security_PermissionsToken permissions_token = DDS_SECURITY_TOKEN_INIT;
+  DDS_Security_AuthenticatedPeerCredentialToken peer_credential_token = DDS_SECURITY_TOKEN_INIT;
   int64_t permissions_hdl = DDS_SECURITY_HANDLE_NIL;
 
   if ((sc = q_omg_security_get_secure_context(pp)) == NULL)
@@ -1657,7 +1657,7 @@ q_omg_security_register_remote_participant(struct participant *pp, struct proxy_
   bool r;
   struct q_globals *gv = pp->e.gv;
   struct secure_context *sc;
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
   DDS_Security_ParticipantCryptoHandle crypto_handle;
   struct proxypp_pp_match *pm;
   struct pending_tokens *pending;
@@ -1783,7 +1783,7 @@ q_omg_security_set_participant_crypto_tokens(
 {
   struct q_globals *gv = pp->e.gv;
   struct secure_context *sc;
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
 
   if ((sc = q_omg_security_get_secure_context(pp)) == NULL)
     return;
@@ -1869,7 +1869,7 @@ q_omg_security_deregister_remote_writer_match(
     struct rd_pwr_match *match)
 {
   struct secure_context *sc;
-  DDS_Security_SecurityException exception = {0};
+  DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
 
   if ((sc = q_omg_security_get_secure_context(rd->c.pp)) == NULL)
     return;
@@ -2966,13 +2966,9 @@ extern inline bool q_omg_security_match_remote_reader_enabled(UNUSED_ARG(struct 
 extern inline void q_omg_get_proxy_writer_security_info(UNUSED_ARG(struct proxy_writer *pwr), UNUSED_ARG(const nn_plist_t *plist), UNUSED_ARG(nn_security_info_t *info));
 extern inline bool q_omg_security_check_remote_writer_permissions(UNUSED_ARG(const struct proxy_writer *pwr), UNUSED_ARG(uint32_t domain_id), UNUSED_ARG(struct participant *pp));
 extern inline void q_omg_security_deregister_remote_writer_match(UNUSED_ARG(struct proxy_writer *pwr), UNUSED_ARG(struct reader *rd), UNUSED_ARG(struct rd_pwr_match *match));
-extern inline void q_omg_security_set_remote_writer_crypto_tokens(UNUSED_ARG(struct reader *rd), UNUSED_ARG(const ddsi_guid_t *pwr_guid), UNUSED_ARG(const nn_dataholderseq_t *tokens));
-
 extern inline void q_omg_get_proxy_reader_security_info(UNUSED_ARG(struct proxy_reader *prd), UNUSED_ARG(const nn_plist_t *plist), UNUSED_ARG(nn_security_info_t *info));
 extern inline bool q_omg_security_check_remote_reader_permissions(UNUSED_ARG(const struct proxy_reader *prd), UNUSED_ARG(uint32_t domain_id), UNUSED_ARG(struct participant *par));
 extern inline void q_omg_security_deregister_remote_reader_match(UNUSED_ARG(struct proxy_reader *prd), UNUSED_ARG(struct writer *wr), UNUSED_ARG(struct wr_prd_match *match));
-extern inline evoid q_omg_security_deregister_remote_reader(UNUSED_ARG(struct proxy_reader *prd));
-extern inline void q_omg_security_set_remote_reader_crypto_tokens(UNUSED_ARG(struct writer *wr), UNUSED_ARG(const ddsi_guid_t *prd_guid), UNUSED_ARG(const nn_dataholderseq_t *tokens));
 
 extern inline unsigned determine_publication_writer(
   UNUSED_ARG(const struct writer *wr));
@@ -3082,10 +3078,6 @@ extern inline nn_rtps_msg_state_t decode_rtps_message(
   UNUSED_ARG(bool isstream));
 
 extern inline int64_t q_omg_security_get_remote_participant_handle(UNUSED_ARG(struct proxy_participant *proxypp));
-inline bool q_omg_security_check_remote_topic_permissions(UNUSED_ARG(uint32_t domain_id), UNUSED_ARG(const ddsi_guid_t *srcguid), UNUSED_ARG(const char *topic_name), UNUSED_ARG(const char *type_name), UNUSED_ARG(const nn_plist_t *plist))
-
-extern inline struct q_omg_security_handshake * ddsi_handshake_find(UNUSED_ARG(const struct participant *pp), UNUSED_ARG(const struct proxy_participant *proxypp));
-extern inline void q_omg_security_handshake_remove(UNUSED_ARG(const struct participant *pp), UNUSED_ARG(const struct proxy_participant *proxypp), UNUSED_ARG(struct ddsi_handshake *handshake));
 
 
 #endif /* DDSI_INCLUDE_SECURITY */
