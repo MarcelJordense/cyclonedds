@@ -43,10 +43,20 @@ struct ddsi_security_globals {
 };
 
 typedef struct nn_msg_sec_info {
+  unsigned encoded:1;
+  unsigned use_rtps_encoding:1;
   int64_t src_pp_handle;
   int64_t dst_pp_handle;
-  bool use_rtps_encoding;
 } nn_msg_sec_info_t;
+
+
+#if 0
+struct participant_sec_attributes;
+struct proxy_participant_sec_attributes;
+struct writer_sec_attributes;
+struct reader_sec_attributes;
+struct nn_security_info_t;
+#endif
 
 
 /**
@@ -84,13 +94,38 @@ struct writer_sec_attributes;
 struct reader_sec_attributes;
 
 /**
+ * @brief Check if access control is enabled for the participant.
+ *
+ * @param[in] pp  Participant to check.
+ *
+ * @returns bool  True if access control is enabled for participant
+ */
+bool q_omg_participant_is_access_protected(const struct participant *pp);
+
+/**
+ * @brief Check if protection at RTPS level is enabled for the participant.
+ *
+ * @param[in] pp  Participant to check.
+ *
+ * @returns bool  True if RTPS protection enabled for participant
+ */
+bool q_omg_participant_is_rtps_protected(const struct participant *pp);
+
+/**
+ * @brief Check if liveliness is protected for the participant.
+ *
+ * @param[in] pp  Participant to check.
+ *
+ * @returns bool  True  if liveliness data for participant is protected
+ */
+bool q_omg_participant_is_liveliness_protected(const struct participant *pp);
+
+/**
  * @brief Check if security is enabled for the participant.
  *
  * @param[in] pp  Participant to check if it is secure.
  *
- * @returns bool
- * @retval true   Participant is secure
- * @retval false  Participant is not secure
+ * @returns bool  True if participant is secure
  */
 bool q_omg_participant_is_secure(const struct participant *pp);
 
@@ -99,9 +134,7 @@ bool q_omg_participant_is_secure(const struct participant *pp);
  *
  * @param[in] proxypp  Proxy participant to check if it is secure.
  *
- * @returns bool
- * @retval true   Proxy participant is secure
- * @retval false  Proxy participant is not secure
+ * @returns bool  True if proxy participant is secure
  */
 bool q_omg_proxy_participant_is_secure(const struct proxy_participant *proxypp);
 
@@ -148,7 +181,7 @@ void q_omg_security_deregister_participant(struct participant *pp);
  * @retval !0 Identity handle associated with the participant.
  * @retval 0  Invalid handle the participant was not registered
  */
-int64_t q_omg_security_get_local_participant_handle(struct participant *pp);
+int64_t q_omg_security_get_local_participant_handle(const struct participant *pp);
 
 /**
  * @brief Get security info flags of the given participant.
@@ -163,17 +196,16 @@ int64_t q_omg_security_get_local_participant_handle(struct participant *pp);
 bool q_omg_get_participant_security_info(struct participant *pp, nn_security_info_t *info);
 
 /**
- * @brief Determine if the messages, related to the given local
- * entity, are RTPS protected or not.
+ * @brief Get the is_rtps_protected flag of the given remote participant.
  *
- * @param[in] pp        Related participant.
+ * @param[in] pp        The participant.
  * @param[in] entityid  ID of the entity to check.
  *
  * @returns bool
- * @retval true   The entity messages are RTPS protected.
- * @retval false  The entity messages are not RTPS protected.
+ * @retval true   RTPS protected is set.
+ * @retval false  RTPS protected is not set.
  */
-bool q_omg_security_is_local_rtps_protected(struct participant *pp, ddsi_entityid_t entityid);
+bool q_omg_security_is_local_rtps_protected(const struct participant *pp, ddsi_entityid_t entityid);
 
 /**
  * @brief Check if security allows to create the topic.
@@ -362,7 +394,7 @@ bool is_proxy_participant_deletion_allowed(struct q_globals * const gv, const st
  * @retval true   The entity messages are RTPS protected.
  * @retval false  The entity messages are not RTPS protected.
  */
-bool q_omg_security_is_remote_rtps_protected(struct proxy_participant *proxy_pp, ddsi_entityid_t entityid);
+bool q_omg_security_is_remote_rtps_protected(const struct proxy_participant *proxy_pp, ddsi_entityid_t entityid);
 
 /**
  * @brief Set security information, depending on plist, into the given
@@ -530,11 +562,38 @@ void set_proxy_writer_security_info(struct proxy_writer *pwr, const nn_plist_t *
  * From the security information contained in the parameter list from the remote writer
  * the corresponding security settings are determined and returned in the info parameter.
  *
- * @param[in] pwr       The remoate writer.
+ * @param[in] pwr       The remote writer.
  * @param[in] plist     The parameter list from the remote writer.
  * @param[out] info     The security settings associated with the remote writer.
  */
 void q_omg_get_proxy_writer_security_info(struct proxy_writer *pwr, const nn_plist_t *plist, nn_security_info_t *info);
+
+/**
+ * @brief Check if the writer has the is_discovery_protected flag set
+ *
+ * @param[in] wr        The local writer.
+ *
+ * @returns bool  True if the writer has the is_discovery_protected flag set
+ */
+bool q_omg_writer_is_discovery_protected(const struct writer *wr);
+
+/**
+ * @brief Check if the writer has the is_submessage_protected flag set
+ *
+ * @param[in] wr        The local writer.
+ *
+ * @returns bool  True if the writer has the is_submessage_protected flag set
+ */
+bool q_omg_writer_is_submessage_protected(const struct writer *wr);
+
+/**
+ * @brief Check if the writer has the is_payload_protected flag set
+ *
+ * @param[in] wr        The local writer.
+ *
+ * @returns bool  True if the writer has the is_payload_protected flag set
+ */
+bool q_omg_writer_is_payload_protected(const struct writer *wr);
 
 /**
  * @brief Check if the remote writer is allowed to communicate with endpoints of the
@@ -617,11 +676,29 @@ void set_proxy_reader_security_info(struct proxy_reader *prd, const nn_plist_t *
  * From the security information contained in the parameter list from the remote reader
  * the corresponding security settings are determined and returned in the info parameter.
  *
- * @param[in] prd       The remoate reader.
+ * @param[in] prd       The remote reader.
  * @param[in] plist     The parameter list from the remote reader.
  * @param[out] info     The security settings associated with the remote reader.
  */
 void q_omg_get_proxy_reader_security_info(struct proxy_reader *prd, const nn_plist_t *plist, nn_security_info_t *info);
+
+/**
+ * @brief Check if the reader has the is_discovery_protected flag set
+ *
+ * @param[in] rd        The local reader.
+ *
+ * @returns bool  True if the reader has the is_discovery_protected flag set
+ */
+bool q_omg_reader_is_discovery_protected(const struct reader *rd);
+
+/**
+ * @brief Check if the reader has the is_submessage_protected flag set
+ *
+ * @param[in] rd        The local reader.
+ *
+ * @returns bool  True if the reader has the is_submessage_protected flag set
+ */
+bool q_omg_reader_is_submessage_protected(const struct reader *rd);
 
 /**
  * @brief Check if the remote reader is allowed to communicate with endpoints of the
@@ -889,6 +966,36 @@ nn_rtps_msg_state_t decode_rtps_message(struct thread_state1 * const ts1, struct
  */
 ssize_t secure_conn_write(ddsi_tran_conn_t conn, const nn_locator_t *dst, size_t niov, const ddsrt_iovec_t *iov, uint32_t flags, MsgLen_t *msg_len, bool dst_one, nn_msg_sec_info_t *sec_info, ddsi_tran_write_fn_t conn_write_cb);
 
+/**
+ * @brief Check if the parameter list key hash is protected
+ *
+ * @param[in] plist        The parameter list
+ *
+ * @returns bool  True if the parameter list key hash is protected
+ */
+bool q_omg_plist_keyhash_is_protected(const nn_plist_t *plist);
+
+/**
+ * @brief Check if the endpoint is protected
+ *
+ * Checks whether the provided parameter list has the flag
+ * ENDPOINT_SECURITY_ATTRIBUTES_FLAG_IS_VALID set. When this flag
+ * is set, this implies that the remote endpoint has protection
+ * enabled.
+ *
+ * @param[in] plist        The parameter list
+ *
+ * @returns bool  True if the endpoint is protected
+ */
+bool q_omg_is_endpoint_protected(const nn_plist_t *plist);
+
+/**
+ * @brief Writes the security attributes and security plugin attributes to log (category discovery)
+ *
+ * @param[in] gv        Global variable
+ * @param[in] plist     The parameter list
+ */
+void q_omg_log_endpoint_protection(struct q_globals * const gv, const nn_plist_t *plist);
 
 #else /* DDSI_INCLUDE_SECURITY */
 
@@ -896,6 +1003,24 @@ ssize_t secure_conn_write(ddsi_tran_conn_t conn, const nn_locator_t *dst, size_t
 
 inline bool
 q_omg_security_enabled(void)
+
+inline bool
+q_omg_participant_is_access_protected(
+  UNUSED_ARG(const struct participant *pp))
+{
+  return false;
+}
+
+inline bool
+q_omg_participant_is_rtps_protected(
+  UNUSED_ARG(const struct participant *pp))
+{
+  return false;
+}
+
+inline bool
+q_omg_participant_is_liveliness_protected(
+  UNUSED_ARG(const struct participant *pp))
 {
   return false;
 }
@@ -971,7 +1096,7 @@ q_omg_security_check_create_topic(
 
 inline int64_t
 q_omg_security_get_local_participant_handle(
-    UNUSED_ARG(struct participant *pp))
+    UNUSED_ARG(const struct participant *pp))
 {
   return 0;
 }
@@ -1020,6 +1145,12 @@ q_omg_security_deregister_reader(
 {
 }
 
+inline bool
+q_omg_security_is_remote_rtps_protected(UNUSED_ARG(const struct proxy_participant *proxypp), UNUSED_ARG(ddsi_entityid_t entityid))
+{
+  return false;
+}
+
 inline void q_omg_security_init_remote_participant(UNUSED_ARG(struct proxy_participant *proxypp))
 {
 }
@@ -1061,6 +1192,21 @@ inline void q_omg_get_proxy_writer_security_info(UNUSED_ARG(struct proxy_writer 
 {
 }
 
+inline bool q_omg_writer_is_discovery_protected(UNUSED_ARG(const struct writer *wr))
+{
+  return false;
+}
+
+inline bool q_omg_writer_is_submessage_protected(UNUSED_ARG(const struct writer *wr))
+{
+  return false;
+}
+
+inline bool q_omg_writer_is_payload_protected(UNUSED_ARG(const struct writer *wr))
+{
+  return false;
+}
+
 inline bool
 q_omg_security_check_remote_writer_permissions(UNUSED_ARG(const struct proxy_writer *pwr), UNUSED_ARG(uint32_t domain_id), UNUSED_ARG(struct participant *pp))
 {
@@ -1074,6 +1220,17 @@ inline void q_omg_security_deregister_remote_writer_match(UNUSED_ARG(const struc
 inline void q_omg_get_proxy_reader_security_info(UNUSED_ARG(struct proxy_reader *prd), UNUSED_ARG(const nn_plist_t *plist), UNUSED_ARG(nn_security_info_t *info))
 {
 }
+
+inline bool q_omg_reader_is_discovery_protected(UNUSED_ARG(const struct reader *rd))
+{
+  return false;
+}
+
+inline bool q_omg_reader_is_submessage_protected(UNUSED_ARG(const struct reader *rd))
+{
+  return false;
+}
+
 
 inline bool
 q_omg_security_check_remote_reader_permissions(UNUSED_ARG(const struct proxy_reader *prd), UNUSED_ARG(uint32_t domain_id), UNUSED_ARG(struct participant *pp))
@@ -1181,6 +1338,20 @@ decode_rtps_message(
 }
 
 inline void q_omg_security_deregister_remote_reader_match(UNUSED_ARG(const struct proxy_reader *prd), UNUSED_ARG(const struct writer *wr), UNUSED_ARG(struct wr_prd_match *match))
+{
+}
+
+inline bool q_omg_plist_keyhash_is_protected(UNUSED_ARG(const nn_plist_t *plist))
+{
+  return false;
+}
+
+inline bool q_omg_is_endpoint_protected(UNUSED_ARG(const nn_plist_t *plist))
+{
+  return false;
+}
+
+inline void q_omg_log_endpoint_protection(UNUSED_ARG(struct q_globals * const gv), UNUSED_ARG(const nn_plist_t *plist))
 {
 }
 

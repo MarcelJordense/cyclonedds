@@ -214,7 +214,7 @@ int spdp_write (struct participant *pp)
      terribly important, the msg will grow as needed, address space is
      essentially meaningless because we only use the message to
      construct the payload. */
-  mpayload = nn_xmsg_new (pp->e.gv->xmsgpool, &pp->e.guid, NULL, 0, NN_XMSG_KIND_DATA);
+  mpayload = nn_xmsg_new (pp->e.gv->xmsgpool, &pp->e.guid, pp, 0, NN_XMSG_KIND_DATA);
 
   nn_plist_init_empty (&ps);
   ps.present |= PP_PARTICIPANT_GUID | PP_BUILTIN_ENDPOINT_SET |
@@ -369,7 +369,7 @@ static int spdp_dispose_unregister_with_wr (struct participant *pp, unsigned ent
     return 0;
   }
 
-  mpayload = nn_xmsg_new (pp->e.gv->xmsgpool, &pp->e.guid, NULL, 0, NN_XMSG_KIND_DATA);
+  mpayload = nn_xmsg_new (pp->e.gv->xmsgpool, &pp->e.guid, pp, 0, NN_XMSG_KIND_DATA);
   nn_plist_init_empty (&ps);
   ps.present |= PP_PARTICIPANT_GUID;
   ps.participant_guid = pp->e.guid;
@@ -1038,7 +1038,7 @@ static int sedp_write_endpoint
      the QoS and other settings. So the header fields aren't really
      important, except that they need to be set to reasonable things
      or it'll crash */
-  mpayload = nn_xmsg_new (gv->xmsgpool, &wr->e.guid, NULL, 0, NN_XMSG_KIND_DATA);
+  mpayload = nn_xmsg_new (gv->xmsgpool, &wr->e.guid, wr->c.pp, 0, NN_XMSG_KIND_DATA);
   nn_plist_addtomsg (mpayload, &ps, ~(uint64_t)0, ~(uint64_t)0);
   if (xqos) nn_xqos_addtomsg (mpayload, xqos, qosdiff);
   nn_xmsg_addpar_sentinel (mpayload);
@@ -1297,6 +1297,12 @@ static void handle_SEDP_alive (const struct receiver_state *rst, seqno_t seq, nn
     E ("******* AARGH - it expects inline QoS ********\n", err);
   }
 
+  q_omg_log_endpoint_protection(gv, datap);
+  if (q_omg_is_endpoint_protected(datap) && !q_omg_proxy_participant_is_secure(pp))
+  {
+    E (" remote endpoint is protected while local federation is not secure\n", err);
+  }
+
   if (is_writer)
   {
     pwr = entidx_lookup_proxy_writer_guid (gv->entity_index, &datap->endpoint_guid);
@@ -1501,7 +1507,7 @@ int sedp_write_topic (struct participant *pp, const struct nn_plist *datap)
 
   sedp_wr = get_sedp_writer (pp, NN_ENTITYID_SEDP_BUILTIN_TOPIC_WRITER);
 
-  mpayload = nn_xmsg_new (sedp_wr->e.gv->xmsgpool, &sedp_wr->e.guid, NULL, 0, NN_XMSG_KIND_DATA);
+  mpayload = nn_xmsg_new (sedp_wr->e.gv->xmsgpool, &sedp_wr->e.guid, pp, 0, NN_XMSG_KIND_DATA);
   delta = nn_xqos_delta (&datap->qos, &sedp_wr->e.gv->default_xqos_tp, ~(uint64_t)0);
   if (sedp_wr->e.gv->config.explicitly_publish_qos_set_to_default)
     delta |= ~QP_UNRECOGNIZED_INCOMPATIBLE_MASK;
@@ -1539,7 +1545,7 @@ int sedp_write_cm_participant (struct participant *pp, int alive)
    the QoS and other settings. So the header fields aren't really
    important, except that they need to be set to reasonable things
    or it'll crash */
-  mpayload = nn_xmsg_new (sedp_wr->e.gv->xmsgpool, &sedp_wr->e.guid, NULL, 0, NN_XMSG_KIND_DATA);
+  mpayload = nn_xmsg_new (sedp_wr->e.gv->xmsgpool, &sedp_wr->e.guid, pp, 0, NN_XMSG_KIND_DATA);
   nn_plist_init_empty (&ps);
   ps.present = PP_PARTICIPANT_GUID;
   ps.participant_guid = pp->e.guid;

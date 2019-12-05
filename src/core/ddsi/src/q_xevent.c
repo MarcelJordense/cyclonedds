@@ -979,12 +979,13 @@ static void handle_xevk_acknack (struct nn_xpack *xp, struct xevent *ev, nn_mtim
 
   if (addrset_any_uc (pwr->c.as, &loc) || addrset_any_mc (pwr->c.as, &loc))
   {
+    struct participant *pp = NULL;
     seqno_t nack_seq;
 
-    struct participant *pp = NULL;
-    if (q_omg_security_enabled())
+    if (q_omg_proxy_participant_is_secure(pwr->c.proxypp))
     {
       struct reader *rd = entidx_lookup_reader_guid(pwr->e.gv->entity_index, &ev->u.acknack.rd_guid);
+
       if (rd)
         pp = rd->c.pp;
     }

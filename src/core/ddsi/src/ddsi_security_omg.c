@@ -19,6 +19,7 @@
 #include "dds/ddsrt/misc.h"
 #include "dds/ddsrt/avl.h"
 
+#include "dds/ddsi/q_globals.h"
 #include "dds/ddsi/q_unused.h"
 #include "dds/ddsi/q_bswap.h"
 #include "dds/ddsi/q_plist.h"
@@ -30,8 +31,6 @@
 #include "dds/security/core/dds_security_utils.h"
 #include "dds/ddsi/ddsi_security_util.h"
 
-
-static bool q_omg_writer_is_payload_protected(const struct writer *wr);
 
 static bool endpoint_is_DCPSParticipantSecure(const ddsi_guid_t *guid)
 {
@@ -111,6 +110,18 @@ bool q_omg_security_enabled(void)
            ((guid.entityid.u == NN_ENTITYID_SPDP_RELIABLE_BUILTIN_PARTICIPANT_SECURE_WRITER) || \
             (guid.entityid.u == NN_ENTITYID_SPDP_RELIABLE_BUILTIN_PARTICIPANT_SECURE_READER) )
 
+/* Security information indicates clear data ... */
+#define SECURITY_INFO_CLEAR(info, is_valid_flag)                          \
+(                                                                         \
+    /* ... if no flag was set (ignoring the is_valid flag) ... */         \
+    (info.security_attributes & (~is_valid_flag)) == 0                    \
+)
+
+#define SECURITY_INFO_IS_RTPS_PROTECTED(info)                                                 \
+(                                                                                             \
+    (info.security_attributes & NN_PARTICIPANT_SECURITY_ATTRIBUTES_FLAG_IS_VALID         ) && \
+    (info.security_attributes & NN_PARTICIPANT_SECURITY_ATTRIBUTES_FLAG_IS_RTPS_PROTECTED)    \
+)
 
 
 /* The secure context contains the reference to the security plugins.
@@ -695,22 +706,75 @@ void q_omg_security_deregister_participant(struct participant *pp)
   }
 }
 
-int64_t q_omg_security_get_local_participant_handle(struct participant *pp)
+int64_t q_omg_security_get_local_participant_handle(const struct participant *pp)
 {
   assert(pp);
-
-  if (pp->sec_attr) {
-    return pp->sec_attr->crypto_handle;
-  }
-  return 0;
+  return pp->sec_attr != NULL && pp->sec_attr->crypto_handle;
 }
 
-static bool q_omg_participant_is_access_protected(struct participant *pp)
+bool
+q_omg_participant_is_access_protected(
+    const struct participant *pp)
 {
-  if (pp->sec_attr) {
-    return pp->sec_attr->attr.is_access_protected;
+  assert(pp);
+  return pp->sec_attr != NULL && pp->sec_attr->attr.is_access_protected;
+}
+
+bool
+q_omg_participant_is_rtps_protected(
+    const struct participant *pp)
+{
+  assert(pp);
+  return pp->sec_attr != NULL && pp->sec_attr->attr.is_rtps_protected;
+}
+
+bool
+q_omg_participant_is_liveliness_protected(const struct participant *pp)
+{
+  assert(pp);
+  return pp->sec_attr != NULL && pp->sec_attr->attr.is_liveliness_protected;
+}
+
+
+static bool
+maybe_rtps_protected(
+    ddsi_entityid_t entityid)
+{
+  if (!is_builtin_entityid(entityid, NN_VENDORID_ECLIPSE))
+    return true;
+
+  switch (entityid.u)
+  {
+    case NN_ENTITYID_SEDP_BUILTIN_PUBLICATIONS_SECURE_WRITER:
+    case NN_ENTITYID_SEDP_BUILTIN_PUBLICATIONS_SECURE_READER:
+    case NN_ENTITYID_SEDP_BUILTIN_SUBSCRIPTIONS_SECURE_WRITER:
+    case NN_ENTITYID_SEDP_BUILTIN_SUBSCRIPTIONS_SECURE_READER:
+    case NN_ENTITYID_P2P_BUILTIN_PARTICIPANT_MESSAGE_SECURE_WRITER:
+    case NN_ENTITYID_P2P_BUILTIN_PARTICIPANT_MESSAGE_SECURE_READER:
+    case NN_ENTITYID_SPDP_RELIABLE_BUILTIN_PARTICIPANT_SECURE_WRITER:
+    case NN_ENTITYID_SPDP_RELIABLE_BUILTIN_PARTICIPANT_SECURE_READER:
+      return true;
+    default:
+      return false;
   }
-  return false;
+}
+
+bool
+q_omg_security_is_remote_rtps_protected(
+    const struct proxy_participant *proxypp,
+    ddsi_entityid_t entityid)
+{
+  return q_omg_proxy_participant_is_secure(proxypp) &&
+    SECURITY_INFO_IS_RTPS_PROTECTED(proxypp->security_info) &&
+    maybe_rtps_protected(entityid);
+}
+
+bool
+q_omg_security_is_local_rtps_protected(
+    const struct participant *pp,
+    ddsi_entityid_t entityid)
+{
+  return q_omg_participant_is_rtps_protected(pp) && maybe_rtps_protected(entityid);
 }
 
 bool q_omg_get_participant_security_info(struct participant *pp, nn_security_info_t *info)
@@ -924,13 +988,6 @@ void q_omg_security_deregister_writer(struct writer *wr)
   }
 }
 
-static bool q_omg_writer_is_discovery_protected(const struct writer *wr)
-{
-  /* TODO: Register local writer. */
-  DDSRT_UNUSED_ARG(wr);
-  return false;
-}
-
 bool q_omg_get_writer_security_info(const struct writer *wr, nn_security_info_t *info)
 {
   assert(wr);
@@ -1092,13 +1149,6 @@ void q_omg_security_deregister_reader(struct reader *rd)
   }
 }
 
-static bool q_omg_reader_is_discovery_protected(const struct reader *rd)
-{
-  /* TODO: Register local reader. */
-  DDSRT_UNUSED_ARG(rd);
-  return false;
-}
-
 bool q_omg_get_reader_security_info(const struct reader *rd, nn_security_info_t *info)
 {
   assert(rd);
@@ -1112,20 +1162,14 @@ bool q_omg_get_reader_security_info(const struct reader *rd, nn_security_info_t 
 
 unsigned determine_subscription_writer(const struct reader *rd)
 {
-  if (q_omg_reader_is_discovery_protected(rd))
-  {
-    return NN_ENTITYID_SEDP_BUILTIN_SUBSCRIPTIONS_SECURE_WRITER;
-  }
-  return NN_ENTITYID_SEDP_BUILTIN_SUBSCRIPTIONS_WRITER;
+  return q_omg_reader_is_discovery_protected(rd) ?
+    NN_ENTITYID_SEDP_BUILTIN_SUBSCRIPTIONS_SECURE_WRITER : NN_ENTITYID_SEDP_BUILTIN_SUBSCRIPTIONS_WRITER;
 }
 
 unsigned determine_publication_writer(const struct writer *wr)
 {
-  if (q_omg_writer_is_discovery_protected(wr))
-  {
-    return NN_ENTITYID_SEDP_BUILTIN_PUBLICATIONS_SECURE_WRITER;
-  }
-  return NN_ENTITYID_SEDP_BUILTIN_PUBLICATIONS_WRITER;
+  return q_omg_writer_is_discovery_protected(wr) ?
+    NN_ENTITYID_SEDP_BUILTIN_PUBLICATIONS_SECURE_WRITER : NN_ENTITYID_SEDP_BUILTIN_PUBLICATIONS_WRITER;
 }
 
 int64_t q_omg_security_check_remote_participant_permissions(uint32_t domain_id, struct participant *pp, struct proxy_participant *proxypp)
@@ -1162,7 +1206,7 @@ int64_t q_omg_security_check_remote_participant_permissions(uint32_t domain_id, 
   {
     if (q_omg_participant_is_access_protected(pp))
     {
-      EXCEPTION_ERROR(sc, &exception, "Could not authenticate_peer_credential_token for local participant "PGUIDFMT" and remote participant "PGUIDFMT,
+      EXCEPTION_ERROR(sc, &exception, "Could not authenticate_peer_credential_token for local participan1152t "PGUIDFMT" and remote participant "PGUIDFMT,
           PGUID(pp->e.guid), PGUID(proxypp->e.guid));
       goto no_credentials;
     }
@@ -1375,22 +1419,6 @@ int64_t q_omg_security_get_remote_participant_handle(struct proxy_participant *p
   return 0;
 }
 
-bool q_omg_security_is_remote_rtps_protected(struct proxy_participant *proxy_pp, ddsi_entityid_t entityid)
-{
-  /* TODO: Handshake */
-  DDSRT_UNUSED_ARG(proxy_pp);
-  DDSRT_UNUSED_ARG(entityid);
-  return false;
-}
-
-bool q_omg_security_is_local_rtps_protected(struct participant *pp, ddsi_entityid_t entityid)
-{
-  /* TODO: Handshake */
-  DDSRT_UNUSED_ARG(pp);
-  DDSRT_UNUSED_ARG(entityid);
-  return false;
-}
-
 void set_proxy_participant_security_info(struct proxy_participant *proxypp, const nn_plist_t *plist)
 {
   assert(proxypp);
@@ -1402,6 +1430,24 @@ void set_proxy_participant_security_info(struct proxy_participant *proxypp, cons
     proxypp->security_info.security_attributes = 0;
     proxypp->security_info.plugin_security_attributes = 0;
   }
+}
+
+bool q_omg_writer_is_discovery_protected(const struct writer *wr)
+{
+  assert (wr != NULL);
+  return wr->sec_attr != NULL && wr->sec_attr->attr.is_discovery_protected;
+}
+
+bool q_omg_writer_is_submessage_protected(const struct writer *wr)
+{
+  assert (wr != NULL);
+  return wr->sec_attr != NULL && wr->sec_attr->attr.is_submessage_protected;
+}
+
+bool q_omg_writer_is_payload_protected(const struct writer *wr)
+{
+  assert (wr != NULL);
+  return wr->sec_attr != NULL && wr->sec_attr->attr.is_payload_protected;
 }
 
 bool q_omg_security_check_remote_writer_permissions(const struct proxy_writer *pwr, uint32_t domain_id, struct participant *pp)
@@ -1698,6 +1744,12 @@ void q_omg_security_set_remote_reader_crypto_tokens(struct writer *wr, const dds
   }
 }
 
+bool q_omg_reader_is_discovery_protected(const struct reader *rd)
+{
+  assert (rd != NULL);
+  return rd->sec_attr != NULL && rd->sec_attr->attr.is_discovery_protected;
+}
+
 static bool
 q_omg_security_encode_datareader_submessage(
   struct reader            *rd,
@@ -1827,31 +1879,10 @@ q_omg_security_decode_rtps_message(
   return false;
 }
 
-static bool
-q_omg_writer_is_payload_protected(
-  const struct writer *wr)
+bool q_omg_reader_is_submessage_protected(const struct reader *rd)
 {
-  /* TODO: Local registration. */
-  DDSRT_UNUSED_ARG(wr);
-  return false;
-}
-
-static bool
-q_omg_writer_is_submessage_protected(
-  struct writer *wr)
-{
-  /* TODO: Local registration. */
-  DDSRT_UNUSED_ARG(wr);
-  return false;
-}
-
-static bool
-q_omg_reader_is_submessage_protected(
-  struct reader *rd)
-{
-  /* TODO: Local registration. */
-  DDSRT_UNUSED_ARG(rd);
-  return false;
+  assert (rd != NULL);
+  return rd->sec_attr != NULL && rd->sec_attr->attr.is_submessage_protected;
 }
 
 bool
@@ -2490,10 +2521,43 @@ secure_conn_write(
   return ret;
 }
 
+bool q_omg_plist_keyhash_is_protected(const nn_plist_t *plist)
+{
+  assert(plist);
+  if (plist->present & PP_ENDPOINT_SECURITY_INFO)
+  {
+    unsigned attr = plist->endpoint_security_info.security_attributes;
+    return attr & NN_ENDPOINT_SECURITY_ATTRIBUTES_FLAG_IS_VALID &&
+        attr & NN_ENDPOINT_SECURITY_ATTRIBUTES_FLAG_IS_KEY_PROTECTED;
+  }
+  return false;
+}
+
+bool q_omg_is_endpoint_protected(const nn_plist_t *plist)
+{
+  assert(plist);
+  return plist->present & PP_ENDPOINT_SECURITY_INFO &&
+    !SECURITY_INFO_CLEAR(plist->endpoint_security_info, NN_ENDPOINT_SECURITY_ATTRIBUTES_FLAG_IS_VALID);
+}
+
+void q_omg_log_endpoint_protection(struct q_globals * const gv, const nn_plist_t *plist)
+{
+  GVLOGDISC (" p(");
+  if (plist->present & PP_ENDPOINT_SECURITY_INFO)
+    GVLOGDISC ("0x%08x.0x%08x", plist->endpoint_security_info.security_attributes, plist->endpoint_security_info.plugin_security_attributes);
+  else
+    GVLOGDISC ("open");
+  GVLOGDISC (")");
+}
+
 #else /* DDSI_INCLUDE_SECURITY */
 
 #include "dds/ddsi/ddsi_security_omg.h"
 
+
+extern inline bool q_omg_participant_is_access_protected(UNUSED_ARG(const struct participant *pp));
+extern inline bool q_omg_participant_is_rtps_protected(UNUSED_ARG(const struct participant *pp));
+extern inline bool q_omg_participant_is_liveliness_protected(UNUSED_ARG(const struct participant *pp));
 extern inline bool q_omg_participant_is_secure(UNUSED_ARG(const struct participant *pp));
 extern inline bool q_omg_proxy_participant_is_secure(UNUSED_ARG(const struct proxy_participant *proxypp));
 extern inline bool q_omg_security_enabled(void);
@@ -2502,6 +2566,10 @@ extern inline unsigned determine_subscription_writer(UNUSED_ARG(const struct rea
 
 extern inline bool q_omg_security_match_remote_writer_enabled(UNUSED_ARG(struct reader *rd), UNUSED_ARG(struct proxy_writer *pwr));
 extern inline bool q_omg_security_match_remote_reader_enabled(UNUSED_ARG(struct writer *wr), UNUSED_ARG(struct proxy_reader *prd));
+
+extern inline bool q_omg_writer_is_discovery_protected(UNUSED_ARG(const struct writer *wr));
+extern inline bool q_omg_writer_is_submessage_protected(UNUSED_ARG(const struct writer *wr));
+extern inline bool q_omg_writer_is_payload_protected(UNUSED_ARG(const struct writer *wr));
 
 extern inline void q_omg_get_proxy_writer_security_info(UNUSED_ARG(struct proxy_writer *pwr), UNUSED_ARG(const nn_plist_t *plist), UNUSED_ARG(nn_security_info_t *info));
 extern inline bool q_omg_security_check_remote_writer_permissions(UNUSED_ARG(const struct proxy_writer *pwr), UNUSED_ARG(uint32_t domain_id), UNUSED_ARG(struct participant *pp));
@@ -2528,7 +2596,7 @@ extern inline void q_omg_security_deregister_participant(UNUSED_ARG(struct parti
 
 extern inline bool q_omg_security_check_create_topic(UNUSED_ARG(const struct q_globals *gv), UNUSED_ARG(const ddsi_guid_t *pp_guid), UNUSED_ARG(const char *topic_name), UNUSED_ARG(const struct dds_qos *qos));
 
-extern inline int64_t q_omg_security_get_local_participant_handle(UNUSED_ARG(struct participant *pp));
+extern inline int64_t q_omg_security_get_local_participant_handle(UNUSED_ARG(const struct participant *pp));
 
 extern inline bool q_omg_security_check_create_writer(UNUSED_ARG(struct participant *pp), UNUSED_ARG(uint32_t domain_id), UNUSED_ARG(const char *topic_name), UNUSED_ARG(const struct dds_qos *writer_qos));
 
@@ -2541,6 +2609,9 @@ extern inline bool q_omg_security_check_create_reader(UNUSED_ARG(struct particip
 extern inline void q_omg_security_register_reader(UNUSED_ARG(struct reader *rd));
 
 extern inline void q_omg_security_deregister_reader(UNUSED_ARG(struct reader *rd));
+
+extern inline bool
+q_omg_security_is_remote_rtps_protected(UNUSED_ARG(const struct proxy_participant *proxypp), UNUSED_ARG(ddsi_entityid_t entityid));
 
 /* initialize the proxy participant security attributes */
 extern inline void q_omg_security_init_remote_participant(UNUSED_ARG(struct proxy_participant *proxypp));
@@ -2619,5 +2690,15 @@ extern inline nn_rtps_msg_state_t decode_rtps_message(
 
 extern inline int64_t q_omg_security_get_remote_participant_handle(UNUSED_ARG(struct proxy_participant *proxypp));
 
+
+extern inline bool q_omg_reader_is_discovery_protected(UNUSED_ARG(const struct reader *rd));
+
+extern inline bool q_omg_reader_is_submessage_protected(UNUSED_ARG(const struct reader *rd));
+
+extern inline bool q_omg_plist_keyhash_is_protected(UNUSED_ARG(const nn_plist_t *plist));
+
+extern inline bool q_omg_is_endpoint_protected(UNUSED_ARG(const nn_plist_t *plist));
+
+extern inline void q_omg_log_endpoint_protection(UNUSED_ARG(struct q_globals * const gv), UNUSED_ARG(const nn_plist_t *plist));
 
 #endif /* DDSI_INCLUDE_SECURITY */
