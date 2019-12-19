@@ -20,6 +20,7 @@ PREPEND(srcs_ddsi "${CMAKE_CURRENT_LIST_DIR}/src"
     ddsi_mcgroup.c
     ddsi_security_omg.c
     ddsi_handshake.c
+    ddsi_portmapping.c
     ddsi_serdata.c
     ddsi_serdata_default.c
     ddsi_sertopic.c
@@ -29,6 +30,8 @@ PREPEND(srcs_ddsi "${CMAKE_CURRENT_LIST_DIR}/src"
     ddsi_vendor.c
     ddsi_threadmon.c
     ddsi_rhc.c
+    ddsi_pmd.c
+    ddsi_entity_index.c
     q_addrset.c
     q_bitset_inlines.c
     q_bswap.c
@@ -36,7 +39,6 @@ PREPEND(srcs_ddsi "${CMAKE_CURRENT_LIST_DIR}/src"
     q_ddsi_discovery.c
     q_debmon.c
     q_entity.c
-    q_ephash.c
     q_gc.c
     q_init.c
     q_lat_estim.c
@@ -59,6 +61,9 @@ PREPEND(srcs_ddsi "${CMAKE_CURRENT_LIST_DIR}/src"
     q_freelist.c
     sysdeps.c
 )
+if(ENABLE_LIFESPAN)
+  list(APPEND srcs_ddsi "${CMAKE_CURRENT_LIST_DIR}/src/ddsi_lifespan.c")
+endif()
 
 # The includes should reside close to the code. As long as that's not the case,
 # pull them in from this CMakeLists.txt.
@@ -73,6 +78,7 @@ PREPEND(hdrs_private_ddsi "${CMAKE_CURRENT_LIST_DIR}/include/dds/ddsi"
     ddsi_plist_generic.h
     ddsi_security_omg.h
     ddsi_handshake.h    
+    ddsi_portmapping.h
     ddsi_serdata.h
     ddsi_sertopic.h
     ddsi_serdata_default.h
@@ -83,6 +89,7 @@ PREPEND(hdrs_private_ddsi "${CMAKE_CURRENT_LIST_DIR}/include/dds/ddsi"
     ddsi_builtin_topic_if.h
     ddsi_rhc.h
     ddsi_guid.h
+    ddsi_entity_index.h
     q_addrset.h
     q_bitset.h
     q_bswap.h
@@ -90,7 +97,6 @@ PREPEND(hdrs_private_ddsi "${CMAKE_CURRENT_LIST_DIR}/include/dds/ddsi"
     q_ddsi_discovery.h
     q_debmon.h
     q_entity.h
-    q_ephash.h
     q_feature_check.h
     q_freelist.h
     q_gc.h
@@ -120,6 +126,9 @@ PREPEND(hdrs_private_ddsi "${CMAKE_CURRENT_LIST_DIR}/include/dds/ddsi"
     q_xqos.h
     sysdeps.h
 )
+if(ENABLE_LIFESPAN)
+  list(APPEND hdrs_private_ddsi "${CMAKE_CURRENT_LIST_DIR}/include/dds/ddsi/ddsi_lifespan.h")
+endif()
 
 target_sources(ddsc
   PRIVATE ${srcs_ddsi} ${hdrs_private_ddsi})

@@ -38,7 +38,7 @@ struct nn_defrag;
 struct addrset;
 struct xeventq;
 struct gcreq_queue;
-struct ephash;
+struct entity_index;
 struct lease;
 struct ddsi_tran_conn;
 struct ddsi_tran_listener;
@@ -93,9 +93,8 @@ struct q_globals {
   struct ddsi_tkmap * m_tkmap;
 
   /* Hash tables for participants, readers, writers, proxy
-     participants, proxy readers and proxy writers by GUID
-     (guid_hash) */
-  struct ephash *guid_hash;
+     participants, proxy readers and proxy writers by GUID. */
+  struct entity_index *entity_index;
 
   /* Timed events admin */
   struct xeventq *xevents;
@@ -238,6 +237,8 @@ struct q_globals {
   dds_qos_t builtin_endpoint_xqos_rd;
   dds_qos_t builtin_endpoint_xqos_wr;
 #ifdef DDSI_INCLUDE_SECURITY
+  dds_qos_t builtin_volatile_xqos_rd;
+  dds_qos_t builtin_volatile_xqos_wr;
   dds_qos_t builtin_stateless_xqos_rd;
   dds_qos_t builtin_stateless_xqos_wr;
 #endif

@@ -21,6 +21,8 @@ extern "C" {
 
 struct ddsi_handshake;
 struct dssi_hsadmin;
+struct participant;
+struct proxy_participant;
 
 #ifdef DDSI_INCLUDE_SECURITY
 
