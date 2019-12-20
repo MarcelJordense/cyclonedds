@@ -93,15 +93,6 @@ bool q_omg_proxy_participant_is_secure(const struct proxy_participant *proxypp);
  */
 int64_t q_omg_security_get_local_participant_handle(struct participant *pp);
 
-/**
- * @brief Get the security handle of the given remote participant.
- *
- * @param[in] proxypp  Participant to check if it is secure.
- *
- * @returns int64_t
- * @retval Remote participant security handle
- */
-int64_t q_omg_security_get_remote_participant_handle(struct proxy_participant *proxypp);
 
 /**
  * @brief Get security info flags of the given writer.
@@ -1167,11 +1158,6 @@ inline void q_omg_security_participant_send_tokens(UNUSED_ARG(struct participant
 {
 }
 
-inline bool q_omg_security_match_remote_writer_enabled(UNUSED_ARG(struct reader *rd), UNUSED_ARG(struct proxy_writer *pwr))
-{
-  return true;
-}
-
 inline int64_t q_omg_security_get_remote_participant_handle(UNUSED_ARG(struct proxy_participant *proxypp))
 {
   return 0;
@@ -1312,11 +1298,6 @@ decode_rtps_message(
 }
 
 inline void q_omg_security_deregister_remote_reader_match(UNUSED_ARG(struct proxy_reader *prd), UNUSED_ARG(struct writer *wr), UNUSED_ARG(struct wr_prd_match *match))
-{
-}
-
-
-inline void q_omg_security_set_remote_reader_crypto_tokens(UNUSED_ARG(struct writer *wr), UNUSED_ARG(const ddsi_guid_t *prd_guid), UNUSED_ARG(const nn_dataholderseq_t *tokens))
 {
 }
 

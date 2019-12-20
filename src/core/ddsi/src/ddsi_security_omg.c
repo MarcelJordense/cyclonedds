@@ -930,9 +930,6 @@ q_omg_security_check_create_participant(
   DDS_Security_DataHolder_deinit(&identity_token);
   pp->plist->present |= PP_IDENTITY_TOKEN;
 
-  q_omg_shallow_free_security_qos(&par_qos);
-  q_omg_shallow_copy_security_qos(&par_qos, &(pp->plist->qos));
-
   /* ask to access control security plugin for create participant permissions related to this identity*/
   allowed = sc->access_control->check_create_participant(sc->access_control, pp->permissions_handle, (DDS_Security_DomainId) domain_id, &par_qos, &exception);
   if (!allowed)
@@ -2953,7 +2950,6 @@ secure_conn_write(
 
 #include "dds/ddsi/ddsi_security_omg.h"
 
-
 extern inline bool q_omg_participant_is_secure(UNUSED_ARG(const struct participant *pp));
 extern inline bool q_omg_proxy_participant_is_secure(UNUSED_ARG(const struct proxy_participant *proxypp));
 extern inline bool q_omg_security_enabled(void);
@@ -2988,7 +2984,7 @@ extern inline void q_omg_security_deregister_participant(UNUSED_ARG(struct parti
 
 extern inline bool q_omg_security_check_create_topic(UNUSED_ARG(struct participant *pp), UNUSED_ARG(uint32_t domain_id), UNUSED_ARG(const char *topic_name), UNUSED_ARG(const struct dds_qos *qos));
 
-extern inline int64_t q_omg_security_get_local_participant_handle(UNUSED_ARG(struct participant *pp);
+extern inline int64_t q_omg_security_get_local_participant_handle(UNUSED_ARG(struct participant *pp));
 
 extern inline bool q_omg_security_check_create_writer(UNUSED_ARG(struct participant *pp), UNUSED_ARG(uint32_t domain_id), UNUSED_ARG(const char *topic_name), UNUSED_ARG(const struct dds_qos *writer_qos));
 
