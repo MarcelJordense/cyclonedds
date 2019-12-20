@@ -84,7 +84,7 @@ void ddsi_handshake_crypto_tokens_received(struct ddsi_handshake *handshake);
 /**
  * @brief Get the shared secret handle.
  *
- * During the handshake a shared secret is established whisrc/core/ddsi/include/dds/ddsi/ddsi_handshake.hch is used to encrypt
+ * During the handshake a shared secret is established which is used to encrypt
  * and decrypt the crypto token exchange messages. This function will return a
  * handle to the shared secret which will be passed to the crypto plugin to
  * determine the session keys used for the echange of the the crypto tokens.
@@ -186,10 +186,6 @@ inline void ddsi_handshake_register(UNUSED_ARG(const struct participant *pp), UN
 }
 
 inline void ddsi_handshake_release(UNUSED_ARG(struct ddsi_handshake *handshake))
-{
-}
-
-inline void ddsi_handshake_handle_message(UNUSED_ARG(struct ddsi_handshake *handshake), UNUSED_ARG(const struct participant *pp), UNUSED_ARG(const struct proxy_participant *proxypp), UNUSED_ARG(const struct nn_participant_generic_message *msg))
 {
 }
 
