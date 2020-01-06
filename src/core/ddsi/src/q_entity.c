@@ -2949,7 +2949,7 @@ static void update_proxy_participant_endpoint_matching (struct proxy_participant
       struct match_entities_range_key max;
       const char *tp = entity_topic_name (e);
 
-      entidx_enum_init_topic (&it, entidx, mkind, tp, &max);
+      entidx_enum_init_topic_w_prefix (&it, entidx, mkind, tp, &pp->e.guid.prefix, &max);
       while ((em = entidx_enum_next_max (&it, &max)) != NULL)
       {
         if (&pp->e == get_entity_parent(e))
