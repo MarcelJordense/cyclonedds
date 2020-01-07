@@ -838,6 +838,18 @@ int64_t q_omg_security_get_remote_participant_handle(struct proxy_participant *p
 void q_omg_security_set_participant_crypto_tokens(struct participant *pp, struct proxy_participant *proxypp, const nn_dataholderseq_t *tokens);
 
 /**
+ * @brief Determine the security settings associated with the remote participant.
+ *
+ * From the security information contained in the parameter list from the remote participant
+ * the corresponding security settings are determined and returned in the info parameter.
+ *
+ * @param[in] proxypp   The remoate participant.
+ * @param[in] plist     The parameter list from the remote writer.
+ * @param[out] info     The security settings associated with the remote writer.
+ */
+void q_omg_get_proxy_participant_security_info(struct proxy_participant *proxypp, const nn_plist_t *plist, nn_security_info_t *info);
+
+/**
  * @brief Determine the security settings associated with the remote writer.
  *
  * From the security information contained in the parameter list from the remote writer
