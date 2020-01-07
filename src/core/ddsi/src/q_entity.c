@@ -1160,6 +1160,7 @@ static void unref_participant (struct participant *pp, const struct ddsi_guid *g
     ddsrt_mutex_destroy (&pp->refc_lock);
     entity_common_fini (&pp->e);
     remove_deleted_participant_guid (pp->e.gv->deleted_participants, &pp->e.guid, DPG_LOCAL);
+    q_omg_security_deregister_participant(pp);
     inverse_uint32_set_fini(&pp->avail_entityids.x);
     ddsrt_free (pp);
   }
@@ -1724,7 +1725,11 @@ static void writer_drop_connection (const struct ddsi_guid *wr_guid, const struc
       rebuild_writer_addrset (wr);
       remove_acked_messages (wr, &whcst, &deferred_free_list);
       wr->num_reliable_readers -= m->is_reliable;
+#ifdef DDSI_INCLUDE_SECURITY
+      q_omg_security_deregister_remote_reader_match (prd, wr, m);
+#endif
     }
+
     ddsrt_mutex_unlock (&wr->e.lock);
     if (m != NULL && wr->status_cb)
     {
@@ -1823,7 +1828,13 @@ static void reader_drop_connection (const struct ddsi_guid *rd_guid, const struc
     struct rd_pwr_match *m;
     ddsrt_mutex_lock (&rd->e.lock);
     if ((m = ddsrt_avl_lookup (&rd_writers_treedef, &rd->writers, &pwr->e.guid)) != NULL)
+    {
       ddsrt_avl_delete (&rd_writers_treedef, &rd->writers, m);
+#ifdef DDSI_INCLUDE_SECURITY
+      q_omg_security_deregister_remote_writer_match (pwr, rd, m);
+#endif
+    }
+
     ddsrt_mutex_unlock (&rd->e.lock);
     if (m != NULL)
     {
@@ -1910,7 +1921,7 @@ static void update_reader_init_acknack_count (const ddsrt_log_cfg_t *logcfg, con
   }
 }
 
-static void proxy_writer_drop_connection (const struct ddsi_guid *pwr_guid, struct reader *rd)
+static void proxy_writer_drop_connection (const struct ddsi_guid *pwr_guid, struct reader *rd, struct rd_pwr_match *rm)
 {
   /* Only called by gc_delete_reader, so we actually have a reader pointer */
   struct proxy_writer *pwr;
@@ -1936,6 +1947,8 @@ static void proxy_writer_drop_connection (const struct ddsi_guid *pwr_guid, stru
         pwr->have_seen_heartbeat = 0;
       local_reader_ary_remove (&pwr->rdary, rd);
     }
+
+    q_omg_security_deregister_remote_writer_match (pwr, rd, rm);
     ddsrt_mutex_unlock (&pwr->e.lock);
     if (m)
     {
@@ -1947,7 +1960,7 @@ static void proxy_writer_drop_connection (const struct ddsi_guid *pwr_guid, stru
   }
 }
 
-static void proxy_reader_drop_connection (const struct ddsi_guid *prd_guid, struct writer *wr)
+static void proxy_reader_drop_connection (const struct ddsi_guid *prd_guid, struct writer *wr, struct wr_prd_match *wm)
 {
   struct proxy_reader *prd;
   if ((prd = entidx_lookup_proxy_reader_guid (wr->e.gv->entity_index, prd_guid)) != NULL)
@@ -1959,6 +1972,8 @@ static void proxy_reader_drop_connection (const struct ddsi_guid *prd_guid, stru
     {
       ddsrt_avl_delete (&prd_writers_treedef, &prd->writers, m);
     }
+
+    q_omg_security_deregister_remote_reader_match (prd, wr, wm);
     ddsrt_mutex_unlock (&prd->e.lock);
     free_prd_wr_match (m);
   }
@@ -3426,6 +3441,10 @@ static dds_return_t new_writer_guid (struct writer **wr_out, const struct ddsi_g
   endpoint_common_init (&wr->e, &wr->c, pp->e.gv, EK_WRITER, guid, group_guid, pp, onlylocal);
   new_writer_guid_common_init(wr, topic, xqos, whc, status_cb, status_entity);
 
+#ifdef DDSI_INCLUDE_SECURITY
+  q_omg_security_register_writer(wr);
+#endif
+
   /* entity_index needed for protocol handling, so add it before we send
    out our first message.  Also: needed for matching, and swapping
    the order if hash insert & matching creates a window during which
@@ -3475,6 +3494,16 @@ dds_return_t new_writer (struct writer **wr_out, struct q_globals *gv, struct dd
     GVLOGDISC ("new_writer - participant "PGUIDFMT" not found\n", PGUID (*ppguid));
     return DDS_RETCODE_BAD_PARAMETER;
   }
+
+#ifdef DDSI_INCLUDE_SECURITY
+  /* Check if DDS Security is enabled */
+  if (q_omg_participant_is_secure (pp))
+  {
+    /* ask to access control security plugin for create writer permissions */
+    if (!q_omg_security_check_create_writer (pp, gv->config.domainId, topic->name, xqos))
+      return DDS_RETCODE_NOT_ALLOWED_BY_SECURITY;
+  }
+#endif
 
   /* participant can't be freed while we're mucking around cos we are
      awake and do not touch the thread's vtime (entidx_lookup already
@@ -3541,7 +3570,7 @@ static void gc_delete_writer (struct gcreq *gcreq)
   {
     struct wr_prd_match *m = ddsrt_avl_root_non_empty (&wr_readers_treedef, &wr->readers);
     ddsrt_avl_delete (&wr_readers_treedef, &wr->readers, m);
-    proxy_reader_drop_connection (&m->prd_guid, wr);
+    proxy_reader_drop_connection (&m->prd_guid, wr, m);
     free_wr_prd_match (m);
   }
   while (!ddsrt_avl_is_empty (&wr->local_readers))
@@ -3575,6 +3604,10 @@ static void gc_delete_writer (struct gcreq *gcreq)
   ddsrt_free (wr->xqos);
   local_reader_ary_fini (&wr->rdary);
   ddsrt_cond_destroy (&wr->throttle_cond);
+
+#ifdef DDSI_INCLUDE_SECURITY
+  q_omg_security_deregister_writer(wr);
+#endif
 
   ddsi_sertopic_unref ((struct ddsi_sertopic *) wr->topic);
   endpoint_common_fini (&wr->e, &wr->c);
@@ -3901,6 +3934,10 @@ static dds_return_t new_reader_guid
   }
   assert (rd->xqos->present & QP_LIVELINESS);
 
+#ifdef DDSI_INCLUDE_SECURITY
+  q_omg_security_register_reader(rd);
+#endif
+
 #ifdef DDSI_INCLUDE_NETWORK_PARTITIONS
   rd->as = new_addrset ();
   if (pp->e.gv->config.allowMulticast & ~AMC_SPDP)
@@ -3992,6 +4029,17 @@ dds_return_t new_reader
     GVLOGDISC ("new_reader - participant "PGUIDFMT" not found\n", PGUID (*ppguid));
     return DDS_RETCODE_BAD_PARAMETER;
   }
+
+#ifdef DDSI_INCLUDE_SECURITY
+  /* Check if DDS Security is enabled */
+  if (q_omg_participant_is_secure (pp))
+  {
+    /* ask to access control security plugin for create writer permissions */
+    if (!q_omg_security_check_create_reader (pp, gv->config.domainId, topic->name, xqos))
+      return DDS_RETCODE_NOT_ALLOWED_BY_SECURITY;
+  }
+#endif
+
   rdguid->prefix = pp->e.guid.prefix;
   kind = topic->topickind_no_key ? NN_ENTITYID_KIND_READER_NO_KEY : NN_ENTITYID_KIND_READER_WITH_KEY;
   if ((rc = pp_allocate_entityid (&rdguid->entityid, kind, pp)) < 0)
@@ -4010,7 +4058,7 @@ static void gc_delete_reader (struct gcreq *gcreq)
   {
     struct rd_pwr_match *m = ddsrt_avl_root_non_empty (&rd_writers_treedef, &rd->writers);
     ddsrt_avl_delete (&rd_writers_treedef, &rd->writers, m);
-    proxy_writer_drop_connection (&m->pwr_guid, rd);
+    proxy_writer_drop_connection (&m->pwr_guid, rd, m);
     free_rd_pwr_match (rd->e.gv, m);
   }
   while (!ddsrt_avl_is_empty (&rd->local_writers))
@@ -4040,6 +4088,10 @@ static void gc_delete_reader (struct gcreq *gcreq)
     (rd->status_cb) (rd->status_cb_entity, NULL);
   }
   ddsi_sertopic_unref ((struct ddsi_sertopic *) rd->topic);
+
+#ifdef DDSI_INCLUDE_SECURITY
+  q_omg_security_deregister_reader(rd);
+#endif
 
   nn_xqos_fini (rd->xqos);
   ddsrt_free (rd->xqos);

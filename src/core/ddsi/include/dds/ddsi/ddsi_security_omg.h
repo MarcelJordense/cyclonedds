@@ -222,8 +222,8 @@ bool q_omg_get_participant_security_info(struct participant *pp, nn_security_inf
  * This function checks with access control if is allowed to create
  * this topic for the specified domain.
  *
- * @param[in] pp          Participant on which the topic is being created.
- * @param[in] domain_id   The corresponding domain_id.
+ * @param[in] gv          The domain global information.
+ * @param[in] pp_guid     The participant guid.
  * @param[in] topic_name  The name of the  topic.
  * @param[in] qos         The topic QoS used.
  *
@@ -233,8 +233,8 @@ bool q_omg_get_participant_security_info(struct participant *pp, nn_security_inf
  */
 bool
 q_omg_security_check_create_topic(
-    struct participant *pp,
-    uint32_t domain_id,
+    const struct q_globals *gv,
+    const ddsi_guid_t *pp_guid,
     const char *topic_name,
     const struct dds_qos *qos);
 
@@ -838,18 +838,6 @@ int64_t q_omg_security_get_remote_participant_handle(struct proxy_participant *p
 void q_omg_security_set_participant_crypto_tokens(struct participant *pp, struct proxy_participant *proxypp, const nn_dataholderseq_t *tokens);
 
 /**
- * @brief Determine the security settings associated with the remote participant.
- *
- * From the security information contained in the parameter list from the remote participant
- * the corresponding security settings are determined and returned in the info parameter.
- *
- * @param[in] proxypp   The remoate participant.
- * @param[in] plist     The parameter list from the remote writer.
- * @param[out] info     The security settings associated with the remote writer.
- */
-void q_omg_get_proxy_participant_security_info(struct proxy_participant *proxypp, const nn_plist_t *plist, nn_security_info_t *info);
-
-/**
  * @brief Determine the security settings associated with the remote writer.
  *
  * From the security information contained in the parameter list from the remote writer
@@ -911,7 +899,7 @@ bool q_omg_security_match_remote_writer_enabled(struct reader *rd, struct proxy_
  * @param[in] rd    The local reader.
  * @param[in] match The match information between the reader and the remote writer.
  */
-void q_omg_security_deregister_remote_writer_match(struct proxy_writer *pwr, struct reader *rd, struct rd_pwr_match *match);
+void q_omg_security_deregister_remote_writer_match(const struct proxy_writer *pwr, const struct reader *rd, struct rd_pwr_match *match);
 
 /**
  * @brief Set the crypto tokens used for the secure communication from the remote writer to the reader.
@@ -991,7 +979,7 @@ bool q_omg_security_match_remote_reader_enabled(struct writer *wr, struct proxy_
  * @param[in] wr   The local writer.
  * @param[in] match The match information between the writer and the remote reader.
  */
-void q_omg_security_deregister_remote_reader_match(struct proxy_reader *prd, struct writer *wr, struct wr_prd_match *match);
+void q_omg_security_deregister_remote_reader_match(const struct proxy_reader *prd, const struct writer *wr, struct wr_prd_match *match);
 
 /**
  * @brief Set the crypto tokens used for the secure communication from the remote reader to the writer.
@@ -1078,8 +1066,8 @@ q_omg_security_deregister_participant(
 
 inline bool
 q_omg_security_check_create_topic(
-    UNUSED_ARG(struct participant *pp),
-    UNUSED_ARG(uint32_t domain_id),
+    UNUSED_ARG(const struct q_globals *gv),
+    UNUSED_ARG(const ddsi_guid_t *pp_guid),
     UNUSED_ARG(const char *topic_name),
     UNUSED_ARG(const struct dds_qos *qos))
 {
@@ -1184,7 +1172,7 @@ q_omg_security_check_remote_writer_permissions(UNUSED_ARG(const struct proxy_wri
   return true;
 }
 
-inline void q_omg_security_deregister_remote_writer_match(UNUSED_ARG(struct proxy_writer *pwr), UNUSED_ARG(struct reader *rd), UNUSED_ARG(struct rd_pwr_match *match))
+inline void q_omg_security_deregister_remote_writer_match(UNUSED_ARG(const struct proxy_writer *pwr), UNUSED_ARG(const struct reader *rd), UNUSED_ARG(struct rd_pwr_match *match))
 {
 }
 
@@ -1297,7 +1285,7 @@ decode_rtps_message(
   return NN_RTPS_MSG_STATE_PLAIN;
 }
 
-inline void q_omg_security_deregister_remote_reader_match(UNUSED_ARG(struct proxy_reader *prd), UNUSED_ARG(struct writer *wr), UNUSED_ARG(struct wr_prd_match *match))
+inline void q_omg_security_deregister_remote_reader_match(UNUSED_ARG(const struct proxy_reader *prd), UNUSED_ARG(const struct writer *wr), UNUSED_ARG(struct wr_prd_match *match))
 {
 }
 

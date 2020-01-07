@@ -28,8 +28,7 @@
 #include "dds/ddsi/ddsi_security_msg.h"
 #include "dds/ddsi/ddsi_security_omg.h"
 #include "dds/security/core/dds_security_utils.h"
-
-#define DDS_SECURITY_EXCEPTION_INIT  {NULL, 0, 0}
+#include "dds/ddsi/ddsi_security_util.h"
 
 
 static bool
@@ -241,19 +240,7 @@ q_omg_create_secure_context (
   DDSRT_UNUSED_ARG(pp);
 
   *secure_context = NULL;
-#if 0
-  struct secure_context *sc;
 
-  sc = ddsrt_malloc(sizeof(*sc));
-  sc->authentication = NULL;
-  sc->access_control = NULL;
-  sc->crypto = NULL;
-  sc->hsadmin = ddsi_handshake_admin_create();
-  ddsrt_mutex_init(&sc->lock);
-  ddsrt_avl_init (&pending_tokens_treedef, &sc->pending_tokens);
-
-  *secure_context = sc;
-#endif
   return 0;
 }
 
@@ -275,356 +262,6 @@ q_omg_security_get_handhake_admin(
   if ((sc = q_omg_security_get_secure_context(pp)) != NULL)
     return sc->hsadmin;
   return NULL;
-}
-
-static void
-g_omg_shallow_copy_StringSeq(
-    DDS_Security_StringSeq *dst,
-    const ddsi_stringseq_t *src)
-{
-  unsigned i;
-  assert(dst);
-  assert(src);
-
-  dst->_length  = src->n;
-  dst->_maximum = src->n;
-  dst->_buffer  = NULL;
-  if (src->n > 0)
-  {
-    dst->_buffer = ddsrt_malloc(src->n * sizeof(DDS_Security_string));
-    for (i = 0; i < src->n; i++)
-      dst->_buffer[i] = src->strs[i];
-  }
-}
-
-static void
-g_omg_shallow_free_StringSeq(
-    DDS_Security_StringSeq *obj)
-{
-  if (obj)
-    ddsrt_free(obj->_buffer);
-}
-
-static void
-q_omg_copy_PropertySeq(
-    DDS_Security_PropertySeq *dst,
-    const dds_propertyseq_t *src)
-{
-  uint32_t i;
-
-  if (src)
-  {
-    dst->_length = dst->_maximum = src->n;
-    if (src->n > 0)
-      dst->_buffer = DDS_Security_PropertySeq_allocbuf(src->n);
-    else
-      dst->_buffer = NULL;
-
-    for (i = 0; i < src->n; i++)
-    {
-      dst->_buffer[i].name =  src->props->name ? ddsrt_strdup(src->props->name) : ddsrt_strdup("");
-      dst->_buffer[i].value = src->props->value ? ddsrt_strdup(src->props->value) : ddsrt_strdup("");
-    }
-  }
-  else
-    memset(dst, 0, sizeof(*dst));
-}
-
-static void
-q_omg_shallow_copy_PropertySeq(
-   DDS_Security_PropertySeq *dst,
-   const dds_propertyseq_t *src)
-{
-  unsigned i;
-  assert(dst);
-  assert(src);
-
-  dst->_length  = src->n;
-  dst->_maximum = src->n;
-  dst->_buffer  = NULL;
-
-  if (src->n > 0)
-  {
-    dst->_buffer = ddsrt_malloc(src->n * sizeof(DDS_Security_Property_t));
-    for (i = 0; i < src->n; i++)
-    {
-      dst->_buffer[i].name      = src->props[i].name;
-      dst->_buffer[i].value     = src->props[i].value;
-      dst->_buffer[i].propagate = src->props[i].propagate;
-    }
-  }
-}
-
-static void
-q_omg_shallow_free_PropertySeq(
-    DDS_Security_PropertySeq *obj)
-{
-  assert(obj);
-  ddsrt_free(obj->_buffer);
-  obj->_buffer = NULL;
-}
-
-static void
-q_omg_shallow_copy_BinaryPropertySeq(
-    DDS_Security_BinaryPropertySeq *dst,
-    const dds_binarypropertyseq_t *src)
-{
-  unsigned i;
-  assert(dst);
-  assert(src);
-
-  dst->_length  = src->n;
-  dst->_maximum = src->n;
-  dst->_buffer  = NULL;
-
-  if (src->n > 0)
-  {
-    dst->_buffer = ddsrt_malloc(src->n * sizeof(DDS_Security_BinaryProperty_t));
-    for (i = 0; i < src->n; i++)
-    {
-      dst->_buffer[i].name           = src->props[i].name;
-      dst->_buffer[i].value._length  = src->props[i].value.length;
-      dst->_buffer[i].value._maximum = src->props[i].value.length;
-      dst->_buffer[i].value._buffer  = src->props[i].value.value;
-      dst->_buffer[i].propagate      = src->props[i].propagate;
-    }
-  }
-}
-
-static void
-q_omg_shallow_free_BinaryPropertySeq(
-    DDS_Security_BinaryPropertySeq *obj)
-{
-  assert(obj);
-  ddsrt_free(obj->_buffer);
-  obj->_buffer = NULL;
-}
-
-static void
-q_omg_shallow_copy_PropertyQosPolicy(
-    DDS_Security_PropertyQosPolicy *dst,
-    const dds_property_qospolicy_t *src)
-{
-    assert(dst);
-    assert(src);
-    q_omg_shallow_copy_PropertySeq(&(dst->value), &(src->value));
-    q_omg_shallow_copy_BinaryPropertySeq(&(dst->binary_value), &(src->binary_value));
-}
-
-static void
-q_omg_shallow_copy_security_qos(
-    DDS_Security_Qos *dst,
-    const struct dds_qos *src)
-{
-  assert(src);
-  assert(dst);
-
-  /* DataTags not supported yet. */
-  memset(&(dst->data_tags), 0, sizeof(DDS_Security_DataTagQosPolicy));
-
-  if (src->present & QP_PROPERTY_LIST)
-    q_omg_shallow_copy_PropertyQosPolicy(&(dst->property), &(src->property));
-  else
-    memset(&(dst->property), 0, sizeof(DDS_Security_PropertyQosPolicy));
-}
-
-static void
-q_omg_shallow_free_PropertyQosPolicy(
-    DDS_Security_PropertyQosPolicy *obj)
-{
-  q_omg_shallow_free_PropertySeq(&(obj->value));
-  q_omg_shallow_free_BinaryPropertySeq(&(obj->binary_value));
-}
-
-static void
-q_omg_shallow_free_security_qos(
-    DDS_Security_Qos *obj)
-{
-  q_omg_shallow_free_PropertyQosPolicy(&(obj->property));
-}
-
-static void
-q_omg_security_dataholder_copyin(
-    nn_dataholder_t *dh,
-    const DDS_Security_DataHolder *holder)
-{
-  uint32_t i;
-
-  dh->class_id = holder->class_id ? ddsrt_strdup(holder->class_id) : NULL;
-  dh->properties.n = holder->properties._length;
-  dh->properties.props = dh->properties.n ? ddsrt_malloc(dh->properties.n * sizeof(dds_property_t)) : NULL;
-  for (i = 0; i < dh->properties.n; i++)
-  {
-    DDS_Security_Property_t *prop = &(holder->properties._buffer[i]);
-    dh->properties.props[i].name = prop->name ? ddsrt_strdup(prop->name) : NULL;
-    dh->properties.props[i].value = prop->value ? ddsrt_strdup(prop->value) : NULL;
-    dh->properties.props[i].propagate = prop->propagate;
-  }
-  dh->binary_properties.n = holder->binary_properties._length;
-  dh->binary_properties.props = dh->binary_properties.n ? ddsrt_malloc(dh->binary_properties.n * sizeof(dds_binaryproperty_t)) : NULL;
-  for (i = 0; i < dh->binary_properties.n; i++)
-  {
-    DDS_Security_BinaryProperty_t *prop = &(holder->binary_properties._buffer[i]);
-    dh->binary_properties.props[i].name = prop->name ? ddsrt_strdup(prop->name) : NULL;
-    dh->binary_properties.props[i].value.length = prop->value._length;
-    if (dh->binary_properties.props[i].value.length)
-    {
-      dh->binary_properties.props[i].value.value = ddsrt_malloc(prop->value._length);
-      memcpy(dh->binary_properties.props[i].value.value, prop->value._buffer, prop->value._length);
-    }
-    else
-    {
-      dh->binary_properties.props[i].value.value = NULL;
-    }
-    dh->binary_properties.props[i].propagate = prop->propagate;
-  }
-}
-
-#if 0
-static void
-q_omg_security_dataholder_copyout(
-    DDS_Security_DataHolder *holder,
-    const nn_dataholder_t *dh)
-{
-  uint32_t i;
-
-  holder->class_id = dh->class_id ? ddsrt_strdup(dh->class_id) : NULL;
-  holder->properties._length = holder->properties._maximum = dh->properties.n;
-  holder->properties._buffer = dh->properties.n ? DDS_Security_PropertySeq_allocbuf(dh->properties.n) : NULL;
-  for (i = 0; i < dh->properties.n; i++)
-  {
-    dds_property_t *props = &(dh->properties.props[i]);
-    holder->properties._buffer[i].name = props->name ? ddsrt_strdup(props->name) : NULL;
-    holder->properties._buffer[i].value = props->value ? ddsrt_strdup(props->value) : NULL;
-    holder->properties._buffer[i].propagate = props->propagate;
-  }
-  holder->binary_properties._length = holder->binary_properties._maximum = dh->binary_properties.n;
-  holder->binary_properties._buffer = dh->binary_properties.n ? DDS_Security_BinaryPropertySeq_allocbuf(dh->properties.n) : NULL;
-  for (i = 0; i < dh->binary_properties.n; i++)
-  {
-    dds_binaryproperty_t *props = &(dh->binary_properties.props[i]);
-    holder->binary_properties._buffer[i].name = props->name ? ddsrt_strdup(props->name) : NULL;
-    holder->binary_properties._buffer[i].value._length = holder->binary_properties._buffer[i].value._maximum = props->value.length;
-    if (props->value.length)
-    {
-      holder->binary_properties._buffer[i].value._buffer = ddsrt_malloc(props->value.length);
-      memcpy(holder->binary_properties._buffer[i].value._buffer, props->value.value, props->value.length);
-    }
-    else
-    {
-      holder->binary_properties._buffer[i].value._buffer= NULL;
-    }
-    holder->binary_properties._buffer[i].propagate = props->propagate;
-  }
-}
-#endif
-
-static void
-q_omg_shallow_copy_DataHolder(
-    DDS_Security_DataHolder *dst,
-    const nn_dataholder_t *src)
-{
-    assert(dst);
-    assert(src);
-    dst->class_id = src->class_id;
-    q_omg_shallow_copy_PropertySeq(&(dst->properties), &(src->properties));
-    q_omg_shallow_copy_BinaryPropertySeq(&(dst->binary_properties), &(src->binary_properties));
-}
-
-static void
-q_omg_shallow_free_DataHolder(
-    DDS_Security_DataHolder *obj)
-{
-    q_omg_shallow_free_PropertySeq(&(obj->properties));
-    q_omg_shallow_free_BinaryPropertySeq(&(obj->binary_properties));
-}
-
-static void
-q_omg_shallow_copy_DataHolderSeq(
-    DDS_Security_DataHolderSeq *dst,
-    const nn_dataholderseq_t *src)
-{
-  unsigned i;
-
-  dst->_length  = src->n;
-  dst->_maximum = src->n;
-  dst->_buffer  = NULL;
-
-  if (src->n > 0)
-  {
-    dst->_buffer = ddsrt_malloc(src->n * sizeof(DDS_Security_DataHolder));
-    for (i = 0; i < src->n; i++)
-    {
-      q_omg_shallow_copy_DataHolder(&dst->_buffer[i], &src->tags[i]);
-    }
-  }
-}
-
-static void
-q_omg_shallow_free_DataHolderSeq(
-    DDS_Security_DataHolderSeq *obj)
-{
-  unsigned i;
-
-  for (i = 0; i  < obj->_length; i++)
-  {
-    q_omg_shallow_free_DataHolder(&(obj->_buffer[i]));
-  }
-}
-
-
-static void
-q_omg_shallow_copy_ParticipantBuiltinTopicDataSecure(
-    DDS_Security_ParticipantBuiltinTopicDataSecure *dst,
-    const ddsi_guid_t *guid,
-    const nn_plist_t *plist)
-{
-    assert(dst);
-    assert(guid);
-    assert(plist);
-
-    memset(dst, 0, sizeof(DDS_Security_ParticipantBuiltinTopicDataSecure));
-
-    /* The participant guid is the key. */
-    dst->key[0] = guid->prefix.u[0];
-    dst->key[1] = guid->prefix.u[1];
-    dst->key[2] = guid->prefix.u[2];
-
-    /* Copy the DDS_Security_OctetSeq content (length, pointer, etc), not the buffer content. */
-    if (plist->qos.present & QP_USER_DATA) {
-        memcpy(&(dst->user_data.value), &(plist->qos.user_data.value), sizeof(DDS_Security_OctetSeq));
-    }
-
-    /* Tokens are actually DataHolders. */
-    if (plist->present & PP_IDENTITY_TOKEN) {
-        q_omg_shallow_copy_DataHolder(&(dst->identity_token), &(plist->identity_token));
-    }
-    if (plist->present & PP_PERMISSIONS_TOKEN) {
-        q_omg_shallow_copy_DataHolder(&(dst->permissions_token), &(plist->permissions_token));
-    }
-    if (plist->present & PP_IDENTITY_STATUS_TOKEN) {
-        q_omg_shallow_copy_DataHolder(&(dst->identity_status_token), &(plist->identity_status_token));
-    }
-
-    if (plist->qos.present & QP_PROPERTY_LIST) {
-        q_omg_shallow_copy_PropertyQosPolicy(&(dst->property), &(plist->qos.property));
-    }
-
-    if (plist->present & PP_PARTICIPANT_SECURITY_INFO) {
-        dst->security_info.participant_security_attributes = plist->participant_security_info.security_attributes;
-        dst->security_info.plugin_participant_security_attributes = plist->participant_security_info.plugin_security_attributes;
-    }
-}
-
-static void
-q_omg_shallow_free_ParticipantBuiltinTopicDataSecure(
-    DDS_Security_ParticipantBuiltinTopicDataSecure *obj)
-{
-    assert(obj);
-    q_omg_shallow_free_DataHolder(&(obj->identity_token));
-    q_omg_shallow_free_DataHolder(&(obj->permissions_token));
-    q_omg_shallow_free_DataHolder(&(obj->identity_status_token));
-    q_omg_shallow_free_PropertyQosPolicy(&(obj->property));
 }
 
 static const char *
@@ -1201,30 +838,35 @@ is_topic_discovery_protected(
 
 bool
 q_omg_security_check_create_topic(
-    struct participant *pp,
-    uint32_t domain_id,
+    const struct q_globals *gv,
+    const ddsi_guid_t *pp_guid,
     const char *topic_name,
     const struct dds_qos *qos)
 {
+  bool result = true;
+  struct participant *pp;
   struct secure_context *sc;
   DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
   DDS_Security_Qos topic_qos;
-  bool result;
 
-  if ((sc = q_omg_security_get_secure_context(pp)) == NULL)
-    return true;
+  thread_state_awake (lookup_thread_state (), gv);
+  pp = entidx_lookup_participant_guid (gv->entity_index, pp_guid);
 
-  q_omg_shallow_copy_security_qos(&topic_qos, qos);
-  result = sc->access_control->check_create_topic(sc->access_control, pp->permissions_handle, (DDS_Security_DomainId)domain_id, topic_name, &topic_qos, &exception);
-  if (!result)
+  if ((sc = q_omg_security_get_secure_context(pp)) != NULL)
   {
-    /*log if the topic discovery is not protected*/
-    if (!is_topic_discovery_protected(pp->permissions_handle, sc->access_control, topic_name))
-      EXCEPTION_ERROR(sc, &exception, "Local topic permission denied");
-    else
-      security_exception_clear(&exception);
+    q_omg_shallow_copy_security_qos(&topic_qos, qos);
+    result = sc->access_control->check_create_topic(sc->access_control, pp->permissions_handle, (DDS_Security_DomainId)gv->config.domainId, topic_name, &topic_qos, &exception);
+    if (!result)
+    {
+      /*log if the topic discovery is not protected*/
+      if (!is_topic_discovery_protected(pp->permissions_handle, sc->access_control, topic_name))
+        EXCEPTION_ERROR(sc, &exception, "Local topic permission denied");
+      else
+        security_exception_clear(&exception);
+    }
+    q_omg_shallow_free_security_qos(&topic_qos);
   }
-  q_omg_shallow_free_security_qos(&topic_qos);
+  thread_state_asleep (lookup_thread_state ());
 
   return result;
 }
@@ -1353,6 +995,9 @@ q_omg_security_deregister_writer(
   DDS_Security_SecurityException exception = DDS_SECURITY_EXCEPTION_INIT;
 
   assert(wr);
+
+  if (wr->c.pp == NULL)
+    return;
 
   if ((sc = q_omg_security_get_secure_context(wr->c.pp)) == NULL)
     return;
@@ -1501,6 +1146,9 @@ q_omg_security_deregister_reader(
 
   assert(rd);
 
+  if (rd->c.pp == NULL)
+     return;
+
   if ((sc = q_omg_security_get_secure_context(rd->c.pp)) == NULL)
      return;
 
@@ -1566,7 +1214,7 @@ q_omg_security_check_remote_participant_permissions(uint32_t domain_id, struct p
   ddsrt_mutex_lock(&proxypp->e.lock);
 
   if (proxypp->plist->present & PP_PERMISSIONS_TOKEN)
-      q_omg_shallow_copy_DataHolder(&permissions_token, &proxypp->plist->permissions_token);
+      q_omg_shallow_copyin_DataHolder(&permissions_token, &proxypp->plist->permissions_token);
   else
       memset(&permissions_token, 0, sizeof(DDS_Security_PermissionsToken));
 
@@ -1755,24 +1403,6 @@ q_omg_is_similar_participant_security_info(struct participant *pp, struct proxy_
 }
 
 void
-q_omg_get_proxy_participant_security_info(
-    struct proxy_participant *proxypp,
-    const nn_plist_t *plist,
-    nn_security_info_t *info)
-{
-    DDSRT_UNUSED_ARG(proxypp);
-    assert(plist);
-    assert(info);
-    if (plist->present & PP_PARTICIPANT_SECURITY_INFO) {
-        info->security_attributes = plist->participant_security_info.security_attributes;
-        info->plugin_security_attributes = plist->participant_security_info.plugin_security_attributes;
-    } else {
-        info->security_attributes = 0;
-        info->plugin_security_attributes = 0;
-    }
-}
-
-void
 q_omg_security_set_participant_crypto_tokens(
     struct participant *pp,
     struct proxy_participant *proxypp,
@@ -1790,7 +1420,7 @@ q_omg_security_set_participant_crypto_tokens(
     struct proxypp_pp_match *pm;
     DDS_Security_DatawriterCryptoTokenSeq tseq;
 
-    q_omg_shallow_copy_DataHolderSeq(&tseq, tokens);
+    q_omg_shallow_copyin_DataHolderSeq(&tseq, tokens);
 
     ddsrt_mutex_lock(&sc->lock);
     if ((pm = ddsrt_avl_lookup (&proxypp_pp_treedef, &proxypp->sec_attr->local_participants, &pp->local_identity_handle)) != NULL)
@@ -1861,8 +1491,8 @@ q_omg_security_match_remote_writer_enabled(struct reader *rd, struct proxy_write
 
 void
 q_omg_security_deregister_remote_writer_match(
-    struct proxy_writer *pwr,
-    struct reader *rd,
+    const struct proxy_writer *pwr,
+    const struct reader *rd,
     struct rd_pwr_match *match)
 {
   struct secure_context *sc;
@@ -2397,7 +2027,6 @@ encode_datareader_submsg(
   }
 }
 
-
 void
 encode_datawriter_submsg(
   struct nn_xmsg *msg,
@@ -2444,8 +2073,6 @@ encode_datawriter_submsg(
     }
   }
 }
-
-
 
 bool
 validate_msg_decoding(
@@ -2703,11 +2330,10 @@ check_rtps_message_is_secure(
   return ret;
 }
 
-
 void
 q_omg_security_deregister_remote_reader_match(
-    struct proxy_reader *prd,
-    struct writer *wr,
+    const struct proxy_reader *prd,
+    const struct writer *wr,
     struct wr_prd_match *match)
 {
   struct secure_context *sc;
@@ -2744,7 +2370,7 @@ q_omg_security_set_remote_writer_crypto_tokens(
     DDS_Security_DatawriterCryptoTokenSeq tseq;
     struct rd_pwr_match *match;
 
-    q_omg_shallow_copy_DataHolderSeq(&tseq, tokens);
+    q_omg_shallow_copyin_DataHolderSeq(&tseq, tokens);
 
     ddsrt_mutex_lock(&sc->lock);
     match = ddsrt_avl_lookup (&rd_writers_treedef, &rd->writers, pwr_guid);
@@ -2961,10 +2587,10 @@ extern inline bool q_omg_security_match_remote_reader_enabled(UNUSED_ARG(struct 
 
 extern inline void q_omg_get_proxy_writer_security_info(UNUSED_ARG(struct proxy_writer *pwr), UNUSED_ARG(const nn_plist_t *plist), UNUSED_ARG(nn_security_info_t *info));
 extern inline bool q_omg_security_check_remote_writer_permissions(UNUSED_ARG(const struct proxy_writer *pwr), UNUSED_ARG(uint32_t domain_id), UNUSED_ARG(struct participant *pp));
-extern inline void q_omg_security_deregister_remote_writer_match(UNUSED_ARG(struct proxy_writer *pwr), UNUSED_ARG(struct reader *rd), UNUSED_ARG(struct rd_pwr_match *match));
+extern inline void q_omg_security_deregister_remote_writer_match(UNUSED_ARG(const struct proxy_writer *pwr), UNUSED_ARG(const struct reader *rd), UNUSED_ARG(struct rd_pwr_match *match));
 extern inline void q_omg_get_proxy_reader_security_info(UNUSED_ARG(struct proxy_reader *prd), UNUSED_ARG(const nn_plist_t *plist), UNUSED_ARG(nn_security_info_t *info));
 extern inline bool q_omg_security_check_remote_reader_permissions(UNUSED_ARG(const struct proxy_reader *prd), UNUSED_ARG(uint32_t domain_id), UNUSED_ARG(struct participant *par));
-extern inline void q_omg_security_deregister_remote_reader_match(UNUSED_ARG(struct proxy_reader *prd), UNUSED_ARG(struct writer *wr), UNUSED_ARG(struct wr_prd_match *match));
+extern inline void q_omg_security_deregister_remote_reader_match(UNUSED_ARG(const struct proxy_reader *prd), UNUSED_ARG(const struct writer *wr), UNUSED_ARG(struct wr_prd_match *match));
 
 extern inline unsigned determine_publication_writer(
   UNUSED_ARG(const struct writer *wr));
@@ -2982,7 +2608,7 @@ extern inline bool q_omg_security_check_create_participant(UNUSED_ARG(struct par
 
 extern inline void q_omg_security_deregister_participant(UNUSED_ARG(struct participant *pp));
 
-extern inline bool q_omg_security_check_create_topic(UNUSED_ARG(struct participant *pp), UNUSED_ARG(uint32_t domain_id), UNUSED_ARG(const char *topic_name), UNUSED_ARG(const struct dds_qos *qos));
+extern inline bool q_omg_security_check_create_topic(UNUSED_ARG(const struct q_globals *gv), UNUSED_ARG(const ddsi_guid_t *pp_guid), UNUSED_ARG(const char *topic_name), UNUSED_ARG(const struct dds_qos *qos));
 
 extern inline int64_t q_omg_security_get_local_participant_handle(UNUSED_ARG(struct participant *pp));
 

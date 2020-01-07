@@ -53,7 +53,6 @@ struct ddsi_handshake
   int handled_handshake_message;
 };
 
-
 struct ddsi_hsadmin {
   ddsrt_mutex_t lock;
   ddsrt_avl_tree_t handshakes;
