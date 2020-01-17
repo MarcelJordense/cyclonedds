@@ -21,6 +21,10 @@
 #include "dds/ddsi/q_radmin.h"
 #include "dds/ddsi/q_xmsg.h"
 #include "dds/ddsi/q_xqos.h"
+#include "dds/ddsrt/retcode.h"
+#include "dds/ddsrt/types.h"
+#include "dds/ddsrt/sync.h"
+
 
 #if defined (__cplusplus)
 extern "C" {
@@ -33,6 +37,9 @@ typedef enum {
 } nn_rtps_msg_state_t;
 
 #ifdef DDSI_INCLUDE_SECURITY
+
+#include "dds/security/dds_security_api.h"
+#include "dds/security/core/dds_security_plugins.h"
 
 struct ddsi_hsadmin;
 
@@ -86,7 +93,6 @@ void q_omg_security_globals_free(struct ddsi_security_globals *gs);
  * @retval false  No participant is not secure
  */
 bool q_omg_security_enabled(void);
-
 
 struct participant_sec_attributes;
 struct proxy_participant_sec_attributes;
@@ -682,6 +688,30 @@ void set_proxy_reader_security_info(struct proxy_reader *prd, const nn_plist_t *
  */
 void q_omg_get_proxy_reader_security_info(struct proxy_reader *prd, const nn_plist_t *plist, nn_security_info_t *info);
 
+
+/**
+ * @brief Loads the security plugins with the given configuration.
+ *        This function tries to load the plugins only once. Returns the same
+ *        result on subsequent calls.
+ *        It logs the reason and returns error if can not load a plugin.
+ *
+ * @param[in] qos   Participant qos which owns the Property list
+ *                             that contains security configurations and
+ *                             plugin properties that are required for loading libraries
+ * @returns dds_return_t
+ * @retval DDS_RETCODE_OK   All plugins are successfully loaded
+ * @retval DDS_RETCODE_ERROR  One or more security plugins are not loaded.
+ */
+dds_return_t q_omg_security_load( struct dds_security_context *security_context, const dds_qos_t *qos );
+
+
+void q_omg_security_init( struct dds_security_context **sc, const struct ddsrt_log_cfg *logcfg);
+
+void q_omg_security_deinit( struct dds_security_context **sc);
+
+bool q_omg_is_security_loaded(  struct dds_security_context *sc );
+
+
 /**
  * @brief Check if the reader has the is_discovery_protected flag set
  *
@@ -782,7 +812,8 @@ void q_omg_security_set_remote_reader_crypto_tokens(struct writer *wr, const dds
  * @retval true   Encoding succeeded.
  * @retval false  Encoding failed.
  */
-bool q_omg_security_encode_rtps_message(int64_t src_handle, ddsi_guid_t *src_guid, const unsigned char *src_buf, const unsigned int src_len, unsigned char **dst_buf, unsigned int *dst_len, int64_t dst_handle);
+
+bool q_omg_security_encode_rtps_message (int64_t src_handle, ddsi_guid_t *src_guid, const unsigned char *src_buf, size_t src_len, unsigned char **dst_buf, size_t *dst_len, int64_t dst_handle);
 
 /**
  * @brief Encode payload when necessary.
@@ -900,7 +931,7 @@ void encode_datawriter_submsg(struct nn_xmsg *msg, struct nn_xmsg_marker sm_mark
  * @retval true   Decoding succeeded or was not necessary.
  * @retval false  Decoding was necessary, but not detected.
  */
-bool validate_msg_decoding(const struct entity_common *e, const struct proxy_endpoint_common *c, struct proxy_participant *proxypp, struct receiver_state *rst, SubmessageKind_t prev_smid);
+bool validate_msg_decoding (const struct entity_common *e, const struct proxy_endpoint_common *c, const struct proxy_participant *proxypp, const struct receiver_state *rst, SubmessageKind_t prev_smid);
 
 /**
  * @brief Decode not only SecPrefix, but also the SecBody and SecPostfix
@@ -922,7 +953,7 @@ bool validate_msg_decoding(const struct entity_common *e, const struct proxy_end
  * @retval >= 0   Decoding succeeded.
  * @retval <  0   Decoding failed.
  */
-int decode_SecPrefix(struct receiver_state *rst, unsigned char *submsg, size_t submsg_size, unsigned char * const msg_end, const ddsi_guid_prefix_t * const src_prefix, const ddsi_guid_prefix_t * const dst_prefix, int byteswap);
+bool decode_SecPrefix (const struct receiver_state *rst, unsigned char *submsg, size_t submsg_size, unsigned char * const msg_end, const ddsi_guid_prefix_t * const src_prefix, const ddsi_guid_prefix_t * const dst_prefix, int byteswap);
 
 /**
  * @brief Decode the RTPS message.
@@ -1354,6 +1385,17 @@ inline bool q_omg_is_endpoint_protected(UNUSED_ARG(const nn_plist_t *plist))
 inline void q_omg_log_endpoint_protection(UNUSED_ARG(struct q_globals * const gv), UNUSED_ARG(const nn_plist_t *plist))
 {
 }
+
+inline dds_return_t q_omg_security_load( UNUSED_ARG( struct dds_security_context *security_context ), UNUSED_ARG( const dds_qos_t *property_seq) )
+{
+  return DDS_RETCODE_ERROR;
+}
+
+inline void q_omg_security_init( UNUSED_ARG( struct dds_security_context *sc) ) {}
+
+inline void q_omg_security_deinit( UNUSED_ARG( struct dds_security_context *sc) ) {}
+
+inline bool q_omg_is_security_loaded(  UNUSED_ARG( struct dds_security_context *sc )) { return false; }
 
 #endif /* DDSI_INCLUDE_SECURITY */
 

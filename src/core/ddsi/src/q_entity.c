@@ -699,44 +699,77 @@ dds_return_t new_participant_guid (const ddsi_guid_t *ppguid, struct q_globals *
 
 #ifdef DDSI_INCLUDE_SECURITY
   pp->sec_attr = NULL;
-  if (gv->config.omg_security_configuration)
+  /*
+   * if there there are security properties check them .
+   * if there are no security properties, then merge from security configuration if there is
+   */
+  /* check for existing security properties (name starts with dds.sec. conform DDS Security spec 7.2.4.1)
+   * and return if any is found */
   {
-    /* For security, configuration can be provided through the configuration.
-     * However, the specification (and the plugins) expect it to be in the QoS. */
-    if (!nn_xqos_mergein_security_config(&pp->plist->qos, &gv->config.omg_security_configuration->cfg))
-    {
-      char *req[] = { DDS_SEC_PROP_AUTH_IDENTITY_CA,
-                      DDS_SEC_PROP_AUTH_PRIV_KEY,
-                      DDS_SEC_PROP_AUTH_IDENTITY_CERT,
-                      DDS_SEC_PROP_ACCESS_PERMISSIONS_CA,
-                      DDS_SEC_PROP_ACCESS_GOVERNANCE,
-                      DDS_SEC_PROP_ACCESS_PERMISSIONS };
+    bool ready_to_load_security = false;
+    if (nn_xqos_has_prop(&pp->plist->qos, "dds.sec.", true, false)) {
+      char *req[] = {DDS_SEC_PROP_AUTH_IDENTITY_CA,
+                     DDS_SEC_PROP_AUTH_PRIV_KEY,
+                     DDS_SEC_PROP_AUTH_IDENTITY_CERT,
+                     DDS_SEC_PROP_ACCESS_PERMISSIONS_CA,
+                     DDS_SEC_PROP_ACCESS_GOVERNANCE,
+                     DDS_SEC_PROP_ACCESS_PERMISSIONS,
 
-      GVLOGDISC ("new_participant("PGUIDFMT"): using security settings from QoS, ignoring security configuration\n", PGUID (*ppguid));
+                     DDS_SEC_PROP_AUTH_LIBRARY_PATH,
+                     DDS_SEC_PROP_AUTH_LIBRARY_INIT,
+                     DDS_SEC_PROP_AUTH_LIBRARY_FINALIZE,
+                     DDS_SEC_PROP_CRYPTO_LIBRARY_PATH,
+                     DDS_SEC_PROP_CRYPTO_LIBRARY_INIT,
+                     DDS_SEC_PROP_CRYPTO_LIBRARY_FINALIZE,
+                     DDS_SEC_PROP_ACCESS_LIBRARY_PATH,
+                     DDS_SEC_PROP_ACCESS_LIBRARY_INIT,
+                     DDS_SEC_PROP_ACCESS_LIBRARY_FINALIZE};
+      GVLOGDISC ("new_participant("
+                         PGUIDFMT
+                         "): using security settings from QoS\n", PGUID(*ppguid));
 
       /* check if all required security properties exist in qos */
-      for (size_t i = 0; i < sizeof(req) / sizeof(req[0]); i++)
-      {
-        if (!nn_xqos_has_prop (&pp->plist->qos, req[i], false))
-        {
-          GVERROR ("new_participant("PGUIDFMT"): required security property %s missing in Property QoS\n", PGUID (*ppguid), req[i]);
+      for (size_t i = 0; i < sizeof(req) / sizeof(req[0]); i++) {
+        if (!nn_xqos_has_prop(&pp->plist->qos, req[i], false, true)) {
+          GVERROR ("new_participant("
+                           PGUIDFMT
+                           "): required security property %s missing in Property QoS\n", PGUID(*ppguid), req[i]);
           ret = DDS_RETCODE_PRECONDITION_NOT_MET;
         }
       }
-      if (ret != DDS_RETCODE_OK)
+      if (ret == DDS_RETCODE_OK) {
+        ready_to_load_security = true;
+      } else {
         goto new_pp_err_secprop;
+      }
+    } else if (gv->config.omg_security_configuration) {
+      /* For security, configuration can be provided through the configuration.
+       * However, the specification (and the plugins) expect it to be in the QoS. */
+      GVLOGDISC ("new_participant("
+                         PGUIDFMT
+                         "): using security settings from configuration\n", PGUID(*ppguid));
+      nn_xqos_mergein_security_config(&pp->plist->qos, &gv->config.omg_security_configuration->cfg);
+      ready_to_load_security = true;
     }
-  }
 
-  if (nn_xqos_has_prop (&pp->plist->qos, "dds.sec.", true))
-  {
+    if( q_omg_is_security_loaded( gv->security_context ) == false ){
+      if (ready_to_load_security && q_omg_security_load(gv->security_context, &pp->plist->qos) < 0) {
+        GVERROR("Could not load security\n");
+        ret = DDS_RETCODE_NOT_ALLOWED_BY_SECURITY;
+        goto new_pp_err_secprop;
+      }
+    } else {
+      GVLOGDISC ("new_participant("
+                               PGUIDFMT
+                               "): security is already loaded for this domain\n", PGUID(*ppguid));
+    }
+
     if (!q_omg_security_check_create_participant (pp, gv->config.domainId))
     {
       ret = DDS_RETCODE_NOT_ALLOWED_BY_SECURITY;
       goto not_allowed;
     }
   }
-
 #endif
 
   if (gv->logconfig.c.mask & DDS_LC_DISCOVERY)
@@ -4759,7 +4792,7 @@ void new_proxy_participant
      */
     entidx_insert_proxy_participant_guid (gv->entity_index, proxypp);
     add_proxy_builtin_endpoints(gv, ppguid, proxypp, timestamp);
-    DDS_CLOG (DDS_LC_INFO, &gv->logconfig, "Un-secure participant "PGUIDFMT" tries to connect.\n", PGUID (*ppguid));
+    ELOGDISC (proxypp, "Un-secure participant "PGUIDFMT" tries to connect.\n", PGUID (*ppguid));
   }
 #else
   /* Proxy participant must be in the hash tables for new_proxy_{writer,reader} to work */

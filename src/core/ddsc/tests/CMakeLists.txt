@@ -73,11 +73,10 @@ set(CUnit_ddsc_config_simple_udp_file "${CMAKE_CURRENT_LIST_DIR}/config_simple_u
 set(CUnit_ddsc_config_simple_udp_uri "file://${CUnit_ddsc_config_simple_udp_file}")
 set(CUnit_ddsc_config_simple_udp_max_participants "0")
 set(CUnit_ddsc_config_simple_udp_env "${PROJECT_NAME_CAPS}_URI=${CUnit_ddsc_config_simple_udp_uri};MAX_PARTICIPANTS=${CUnit_ddsc_config_simple_udp_max_participants};${CUnit_ddsc_config_simple_udp_env}")
-
 set_tests_properties(
 	CUnit_ddsc_config_simple_udp
 	PROPERTIES
 		REQUIRED_FILES ${CUnit_ddsc_config_simple_udp_file}
 		ENVIRONMENT "${CUnit_ddsc_config_simple_udp_env}")
 
-configure_file("config_env.h.in" "config_env.h")
+configure_file("config_env.h.in" "config_env.h" @ONLY)
