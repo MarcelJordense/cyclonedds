@@ -378,7 +378,6 @@ struct proxy_participant
   unsigned proxypp_have_cm: 1;
   unsigned owns_lease: 1;
 #ifdef DDSI_INCLUDE_SECURITY
-  int64_t remote_identity_handle;   /* OMG DDS Security related member */
   nn_security_info_t security_info;
   struct proxy_participant_sec_attributes *sec_attr;
 #endif

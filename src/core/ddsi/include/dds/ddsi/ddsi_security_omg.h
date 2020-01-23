@@ -42,12 +42,10 @@ typedef enum {
 #include "dds/security/core/dds_security_plugins.h"
 
 struct ddsi_hsadmin;
-
-struct ddsi_security_globals {
-  struct ddsi_hsadmin *hsadmin;
-  ddsrt_mutex_t pending_tokens_lock;
-  ddsrt_avl_tree_t pending_tokens;
-};
+struct participant_sec_attributes;
+struct proxy_participant_sec_attributes;
+struct writer_sec_attributes;
+struct reader_sec_attributes;
 
 typedef struct nn_msg_sec_info {
   unsigned encoded:1;
@@ -56,48 +54,6 @@ typedef struct nn_msg_sec_info {
   int64_t dst_pp_handle;
 } nn_msg_sec_info_t;
 
-
-#if 0
-struct participant_sec_attributes;
-struct proxy_participant_sec_attributes;
-struct writer_sec_attributes;
-struct reader_sec_attributes;
-struct nn_security_info_t;
-#endif
-
-
-/**
- * @brief Create a new security context.
- *
- * The security context contains the handshake administration and a
- * list of pending tokens to be applied when the handshake has finished.
- * The pending tokens list is used to temporarily store tokens received
- * from remote entities but the local handshake is not yet finished.
- *
- * @returns Pointer to a security context;
- */
-struct ddsi_security_globals * q_omg_security_globals_new(void);
-
-/**
- * @brief Free the security context.
- *
- * @param[in] gs Pointer to a security context;
- */
-void q_omg_security_globals_free(struct ddsi_security_globals *gs);
-
-/**
- * @brief Check if any participant has security enabled.
- *
- * @returns bool
- * @retval true   Some participant is secure
- * @retval false  No participant is not secure
- */
-bool q_omg_security_enabled(void);
-
-struct participant_sec_attributes;
-struct proxy_participant_sec_attributes;
-struct writer_sec_attributes;
-struct reader_sec_attributes;
 
 /**
  * @brief Check if access control is enabled for the participant.
@@ -470,6 +426,7 @@ bool q_omg_security_check_create_participant(struct participant *pp, uint32_t do
  */
 void q_omg_security_init_remote_participant(struct proxy_participant *proxypp);
 
+#if 0
 /**
  * @brief Check the if the proxy participant is allowed by checking the security permissions.
  *
@@ -486,6 +443,7 @@ void q_omg_security_init_remote_participant(struct proxy_participant *proxypp);
  * @retval 0     The proxy participant is not allowed.
  */
 int64_t q_omg_security_check_remote_participant_permissions(uint32_t domain_id, struct participant *pp, struct proxy_participant *proxypp);
+#endif
 
 /**
  * @brief Registers the matched proxy participant with the crypto plugin
@@ -498,10 +456,14 @@ int64_t q_omg_security_check_remote_participant_permissions(uint32_t domain_id, 
  *
  * @param[in] pp                 The participant.
  * @param[in] proxypp            The proxy participant.
+ * @param[in] identity_handle    The remote identity handle.
  * @param[in] shared_secret      The shared_secret handle.
- * @param[in] proxy_permissions  The permission handle associated with the proxy participant.
+ *
+ * @returns bool
+ * @retval true    The proxy participant is allowed.
+ * @retval false   The proxy participant is not allowed.
  */
-void q_omg_security_register_remote_participant(struct participant *pp, struct proxy_participant *proxypp, int64_t shared_secret, int64_t proxy_permissions);
+bool q_omg_security_register_remote_participant(struct participant *pp, struct proxy_participant *proxypp, int64_t identity_handle, int64_t shared_secret);
 
 /**
  * @brief Removes a registered proxy participant from administation of the authentication,

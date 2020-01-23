@@ -21,7 +21,7 @@ extern "C" {
 struct participant;
 struct proxy_participant;
 struct ddsi_handshake;
-struct dssi_hsadmin;
+struct dds_security_hsadmin;
 
 enum ddsi_handshake_state {
     STATE_HANDSHAKE_IN_PROGRESS,
@@ -80,6 +80,15 @@ void ddsi_handshake_handle_message(struct ddsi_handshake *handshake, const struc
  * @param[in] handshake     The handshake.
  */
 void ddsi_handshake_crypto_tokens_received(struct ddsi_handshake *handshake);
+
+/**
+ * @brief Get the remote identity handle
+ *
+ * @param[in] handshake  The handshake.
+ *
+ * @returns The remote identity handle.
+ */
+int64_t ddsi_handshake_get_remote_identity_handle(const struct ddsi_handshake *handshake);
 
 /**
  * @brief Get the shared secret handle.

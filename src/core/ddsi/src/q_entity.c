@@ -4489,7 +4489,7 @@ void handshake_end_cb
   struct proxy_participant *proxypp;
   struct participant *pp;
   int64_t shared_secret;
-  int64_t permissions_hdl;
+  int64_t remote_identity_handle;
 
   assert(handshake);
   assert(lpguid);
@@ -4509,10 +4509,9 @@ void handshake_end_cb
   {
   case STATE_HANDSHAKE_PROCESSED:
     shared_secret = ddsi_handshake_get_shared_secret(handshake);
+    remote_identity_handle = ddsi_handshake_get_remote_identity_handle(handshake);
     DDS_CLOG (DDS_LC_DISCOVERY, &gv->logconfig, "handshake (lguid="PGUIDFMT" rguid="PGUIDFMT") processed\n", PGUID (*lpguid), PGUID (*ppguid));
-    permissions_hdl = q_omg_security_check_remote_participant_permissions(gv->config.domainId, pp, proxypp);
-    if (permissions_hdl != 0) {
-      q_omg_security_register_remote_participant(pp, proxypp, shared_secret, permissions_hdl);
+    if (q_omg_security_register_remote_participant(pp, proxypp, remote_identity_handle, shared_secret)) {
       match_volatile_secure_endpoints(pp, proxypp);
     }
     break;
@@ -4720,7 +4719,6 @@ void new_proxy_participant
   ddsrt_avl_init (&proxypp_groups_treedef, &proxypp->groups);
 
 #ifdef DDSI_INCLUDE_SECURITY
-  proxypp->remote_identity_handle = 0;
   proxypp->sec_attr = NULL;
   secure = ((bes & NN_DISC_BUILTIN_ENDPOINT_PARTICIPANT_SECURE_ANNOUNCER) != 0);
   if (!secure)

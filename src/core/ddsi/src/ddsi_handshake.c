@@ -85,6 +85,13 @@ void ddsi_handshake_crypto_tokens_received(struct ddsi_handshake *handshake)
   DDSRT_UNUSED_ARG(handshake);
 }
 
+int64_t ddsi_handshake_get_remote_identity_handle(const struct ddsi_handshake *handshake)
+{
+  DDSRT_UNUSED_ARG(handshake);
+
+  return 0;
+}
+
 int64_t ddsi_handshake_get_shared_secret(const struct ddsi_handshake *handshake)
 {
   DDSRT_UNUSED_ARG(handshake);
@@ -140,7 +147,7 @@ static struct ddsi_handshake * ddsi_handshake_find_locked(
 
 void ddsi_handshake_remove(struct participant *pp, struct proxy_participant *proxypp, struct ddsi_handshake *handshake)
 {
-  struct ddsi_hsadmin *hsadmin = pp->e.gv->g_security->hsadmin;
+  struct ddsi_hsadmin *hsadmin = pp->e.gv->hsadmin;
 
   ddsrt_mutex_lock(&hsadmin->lock);
   if (handshake == NULL)
@@ -157,7 +164,7 @@ void ddsi_handshake_remove(struct participant *pp, struct proxy_participant *pro
 struct ddsi_handshake *
 ddsi_handshake_find(struct participant *pp, struct proxy_participant *proxypp)
 {
-  struct ddsi_hsadmin *hsadmin = pp->e.gv->g_security->hsadmin;
+  struct ddsi_hsadmin *hsadmin = pp->e.gv->hsadmin;
   struct ddsi_handshake *handshake = NULL;
 
   ddsrt_mutex_lock(&hsadmin->lock);
@@ -170,7 +177,7 @@ ddsi_handshake_find(struct participant *pp, struct proxy_participant *proxypp)
 void
 ddsi_handshake_register(struct participant *pp, struct proxy_participant *proxypp, ddsi_handshake_end_cb_t callback)
 {
-  struct ddsi_hsadmin *hsadmin = pp->e.gv->g_security->hsadmin;
+  struct ddsi_hsadmin *hsadmin = pp->e.gv->hsadmin;
   struct ddsi_handshake *handshake = NULL;
 
   ddsrt_mutex_lock(&hsadmin->lock);
