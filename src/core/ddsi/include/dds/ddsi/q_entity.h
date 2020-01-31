@@ -574,7 +574,7 @@ nn_vendorid_t get_entity_vendorid (const struct entity_common *e);
  * @retval DDS_RETCODE_OUT_OF_RESOURCES
  *               The configured maximum number of participants has been reached.
  */
-dds_return_t new_participant_guid (const ddsi_guid_t *ppguid, struct q_globals *gv, unsigned flags, const struct nn_plist *plist);
+dds_return_t new_participant_guid (ddsi_guid_t *ppguid, struct q_globals *gv, unsigned flags, const struct nn_plist *plist);
 
 /**
  * @brief Create a new participant in the domain.  See also new_participant_guid.
