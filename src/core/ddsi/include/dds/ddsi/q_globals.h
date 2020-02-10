@@ -305,6 +305,7 @@ struct q_globals {
   struct dds_security_context *security_context;
   struct dds_security_match_index *security_matches;
   struct ddsi_hsadmin *hsadmin;
+  struct dds_security_garbage *security_garbage;
 #endif
 
 };

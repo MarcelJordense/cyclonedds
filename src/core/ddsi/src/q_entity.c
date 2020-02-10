@@ -1686,19 +1686,25 @@ void rebuild_or_clear_writer_addrsets (struct q_globals *gv, int rebuild)
   GVLOGDISC ("rebuild_or_delete_writer_addrsets(%d) done\n", rebuild);
 }
 
-static void free_wr_prd_match (struct wr_prd_match *m)
+static void free_wr_prd_match (const struct q_globals *gv, const ddsi_guid_t *wr_guid, struct wr_prd_match *m)
 {
   if (m)
   {
+#ifdef DDSI_INCLUDE_SECURITY
+    q_omg_security_deregister_remote_reader_match (gv, wr_guid, m);
+#endif
     nn_lat_estim_fini (&m->hb_to_ack_latency);
     ddsrt_free (m);
   }
 }
 
-static void free_rd_pwr_match (struct q_globals *gv, struct rd_pwr_match *m)
+static void free_rd_pwr_match (struct q_globals *gv, const ddsi_guid_t *rd_guid, struct rd_pwr_match *m)
 {
   if (m)
   {
+#ifdef DDSI_INCLUDE_SECURITY
+      q_omg_security_deregister_remote_writer_match (gv, rd_guid, m);
+#endif
 #ifdef DDSI_INCLUDE_SSM
     if (!is_unspec_locator (&m->ssm_mc_loc))
     {
@@ -1769,9 +1775,6 @@ static void writer_drop_connection (const struct ddsi_guid *wr_guid, const struc
       remove_acked_messages (wr, &whcst, &deferred_free_list);
       wr->num_readers--;
       wr->num_reliable_readers -= m->is_reliable;
-#ifdef DDSI_INCLUDE_SECURITY
-      q_omg_security_deregister_remote_reader_match (prd, wr);
-#endif
     }
 
     ddsrt_mutex_unlock (&wr->e.lock);
@@ -1784,7 +1787,7 @@ static void writer_drop_connection (const struct ddsi_guid *wr_guid, const struc
       (wr->status_cb) (wr->status_cb_entity, &data);
     }
     whc_free_deferred_free_list (wr->whc, deferred_free_list);
-    free_wr_prd_match (m);
+    free_wr_prd_match (wr->e.gv, &wr->e.guid, m);
   }
 }
 
@@ -1875,9 +1878,6 @@ static void reader_drop_connection (const struct ddsi_guid *rd_guid, const struc
     {
       ddsrt_avl_delete (&rd_writers_treedef, &rd->writers, m);
       rd->num_writers--;
-#ifdef DDSI_INCLUDE_SECURITY
-      q_omg_security_deregister_remote_writer_match (pwr, rd);
-#endif
     }
 
     ddsrt_mutex_unlock (&rd->e.lock);
@@ -1903,7 +1903,7 @@ static void reader_drop_connection (const struct ddsi_guid *rd_guid, const struc
         (rd->status_cb) (rd->status_cb_entity, &data);
       }
     }
-    free_rd_pwr_match (pwr->e.gv, m);
+    free_rd_pwr_match (pwr->e.gv, &rd->e.guid, m);
   }
 }
 
@@ -1992,9 +1992,6 @@ static void proxy_writer_drop_connection (const struct ddsi_guid *pwr_guid, stru
         pwr->have_seen_heartbeat = 0;
       local_reader_ary_remove (&pwr->rdary, rd);
     }
-#ifdef DDSI_INCLUDE_SECURITY
-    q_omg_security_deregister_remote_writer_match (pwr, rd);
-#endif
     ddsrt_mutex_unlock (&pwr->e.lock);
     if (m)
     {
@@ -2018,9 +2015,6 @@ static void proxy_reader_drop_connection (const struct ddsi_guid *prd_guid, stru
     {
       ddsrt_avl_delete (&prd_writers_treedef, &prd->writers, m);
     }
-#ifdef DDSI_INCLUDE_SECURITY
-    q_omg_security_deregister_remote_reader_match (prd, wr);
-#endif
     ddsrt_mutex_unlock (&prd->e.lock);
     free_prd_wr_match (m);
   }
@@ -3667,7 +3661,7 @@ static void gc_delete_writer (struct gcreq *gcreq)
     struct wr_prd_match *m = ddsrt_avl_root_non_empty (&wr_readers_treedef, &wr->readers);
     ddsrt_avl_delete (&wr_readers_treedef, &wr->readers, m);
     proxy_reader_drop_connection (&m->prd_guid, wr);
-    free_wr_prd_match (m);
+    free_wr_prd_match (wr->e.gv, &wr->e.guid, m);
   }
   while (!ddsrt_avl_is_empty (&wr->local_readers))
   {
@@ -3792,6 +3786,9 @@ dds_return_t delete_writer_nolinger (struct q_globals *gv, const struct ddsi_gui
     return DDS_RETCODE_BAD_PARAMETER;
   }
   GVLOGDISC ("delete_writer_nolinger(guid "PGUIDFMT") ...\n", PGUID (*guid));
+#ifdef DDSI_INCLUDE_SECURITY
+  q_omg_security_deregister_writer(wr);
+#endif
   ddsrt_mutex_lock (&wr->e.lock);
   delete_writer_nolinger_locked (wr);
   ddsrt_mutex_unlock (&wr->e.lock);
@@ -4156,7 +4153,7 @@ static void gc_delete_reader (struct gcreq *gcreq)
     struct rd_pwr_match *m = ddsrt_avl_root_non_empty (&rd_writers_treedef, &rd->writers);
     ddsrt_avl_delete (&rd_writers_treedef, &rd->writers, m);
     proxy_writer_drop_connection (&m->pwr_guid, rd);
-    free_rd_pwr_match (rd->e.gv, m);
+    free_rd_pwr_match (rd->e.gv, &rd->e.guid, m);
   }
   while (!ddsrt_avl_is_empty (&rd->local_writers))
   {
@@ -4165,6 +4162,10 @@ static void gc_delete_reader (struct gcreq *gcreq)
     writer_drop_local_connection (&m->wr_guid, rd);
     free_rd_wr_match (m);
   }
+
+#ifdef DDSI_INCLUDE_SECURITY
+  q_omg_security_deregister_reader(rd);
+#endif
 
   if (!is_builtin_entityid (rd->e.guid.entityid, NN_VENDORID_ECLIPSE))
     sedp_dispose_unregister_reader (rd);
@@ -4185,10 +4186,6 @@ static void gc_delete_reader (struct gcreq *gcreq)
     (rd->status_cb) (rd->status_cb_entity, NULL);
   }
   ddsi_sertopic_unref ((struct ddsi_sertopic *) rd->topic);
-
-#ifdef DDSI_INCLUDE_SECURITY
-  q_omg_security_deregister_reader(rd);
-#endif
 
   nn_xqos_fini (rd->xqos);
   ddsrt_free (rd->xqos);
@@ -4212,6 +4209,9 @@ dds_return_t delete_reader (struct q_globals *gv, const struct ddsi_guid *guid)
   GVLOGDISC ("delete_reader_guid(guid "PGUIDFMT") ...\n", PGUID (*guid));
   builtintopic_write (rd->e.gv->builtin_topic_interface, &rd->e, now(), false);
   entidx_remove_reader_guid (gv->entity_index, rd);
+#ifdef DDSI_INCLUDE_SECURITY
+  q_omg_security_deregister_reader(rd);
+#endif
   gcreq_reader (rd);
   return 0;
 }
