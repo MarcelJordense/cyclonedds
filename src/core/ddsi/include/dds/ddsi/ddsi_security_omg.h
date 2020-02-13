@@ -737,7 +737,7 @@ bool q_omg_security_match_remote_reader_enabled(struct writer *wr, struct proxy_
  * writer and the remote reader.
  *
  * @param[in] gv       The global parameters.
- * @param[in] rd_guid  The guid of the writer.
+ * @param[in] wr_guid  The guid of the writer.
  * @param[in] match    The writer-proxy_reader match.
  */
 void q_omg_security_deregister_remote_reader_match(const struct q_globals *gv, const ddsi_guid_t *wr_guid, struct wr_prd_match *match);
