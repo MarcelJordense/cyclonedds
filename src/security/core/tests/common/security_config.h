@@ -1,0 +1,25 @@
+/*
+ * Copyright(c) 2006 to 2020 ADLINK Technology Limited and others
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v. 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0, or the Eclipse Distribution License
+ * v. 1.0 which is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ *
+ * SPDX-License-Identifier: EPL-2.0 OR BSD-3-Clause
+ */
+#ifndef SECURITY_CORE_TEST_SECURITY_CONFIG_H_
+#define SECURITY_CORE_TEST_SECURITY_CONFIG_H_
+
+#include <stdlib.h>
+#include "dds/ddsrt/environ.h"
+
+struct kvp {
+  const char *key;
+  const char *value;
+};
+
+char * get_governance_config(struct kvp *config_vars);
+
+#endif /* SECURITY_CORE_TEST_SECURITY_CONFIG_H_ */
