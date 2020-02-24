@@ -12,6 +12,7 @@
 #ifndef DDSI_OMG_SECURITY_H
 #define DDSI_OMG_SECURITY_H
 
+#include "dds/export.h"
 #include "dds/ddsrt/sync.h"
 #include "dds/ddsrt/avl.h"
 
@@ -121,7 +122,8 @@ struct reader_sec_attributes {
   bool plugin_attr;
 };
 
-struct dds_security_authentication *q_omg_participant_get_authentication(const struct participant *pp);
+DDS_EXPORT struct dds_security_authentication *q_omg_participant_get_authentication(const struct participant *pp);
+DDS_EXPORT struct dds_security_cryptography *q_omg_participant_get_cryptography(const struct participant *pp);
 
 void q_omg_log_exception(const struct ddsrt_log_cfg *lc, uint32_t cat, DDS_Security_SecurityException *exception, const char *file, uint32_t line, const char *func, const char *fmt, ...);
 

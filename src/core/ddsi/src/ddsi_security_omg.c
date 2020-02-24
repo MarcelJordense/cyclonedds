@@ -234,6 +234,13 @@ struct dds_security_authentication *q_omg_participant_get_authentication(const s
   return NULL;
 }
 
+struct dds_security_cryptography *q_omg_participant_get_cryptography(const struct participant *pp)
+{
+  if (pp && pp->e.gv->security_context && q_omg_is_security_loaded(pp->e.gv->security_context))
+    return pp->e.gv->security_context->crypto_context;
+  return NULL;
+}
+
 static struct dds_security_context * q_omg_security_get_secure_context_from_proxypp(const struct proxy_participant *proxypp)
 {
   if (proxypp && proxypp->e.gv->security_context && q_omg_is_security_loaded(proxypp->e.gv->security_context))
