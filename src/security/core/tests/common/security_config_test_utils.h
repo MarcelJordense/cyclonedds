@@ -9,8 +9,8 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR BSD-3-Clause
  */
-#ifndef SECURITY_CORE_TEST_SECURITY_CONFIG_H_
-#define SECURITY_CORE_TEST_SECURITY_CONFIG_H_
+#ifndef SECURITY_CORE_TEST_SECURITY_CONFIG_TEST_UTILS_H_
+#define SECURITY_CORE_TEST_SECURITY_CONFIG_TEST_UTILS_H_
 
 #include <stdlib.h>
 #include "dds/ddsrt/environ.h"
@@ -20,6 +20,9 @@ struct kvp {
   const char *value;
 };
 
-char * get_governance_config(struct kvp *config_vars);
+const char * expand_lookup_vars (const char *name, void * data);
+const char * expand_lookup_vars_env (const char *name, void * data);
 
-#endif /* SECURITY_CORE_TEST_SECURITY_CONFIG_H_ */
+char * get_governance_config (struct kvp *config_vars);
+
+#endif /* SECURITY_CORE_TEST_SECURITY_CONFIG_TEST_UTILS_H_ */

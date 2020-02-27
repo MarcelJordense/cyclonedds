@@ -14,7 +14,7 @@
 
 #include "dds/security/dds_security_api.h"
 #include "dds/security/authentication_wrapper_export.h"
-#include "msg_q.h"
+#include "plugin_wrapper_msg_q.h"
 
 /* Init in wrapper mode */
 SECURITY_EXPORT int32_t init_test_authentication_wrapped(const char *argument, void **context);

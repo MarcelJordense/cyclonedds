@@ -17,7 +17,7 @@ idlc_generate(SecurityCoreTests SecurityCoreTests.idl)
 function(add_wrapper libname linklibs)
   set(srcs_wrapper
     "${CMAKE_CURRENT_LIST_DIR}/common/${libname}_wrapper.c"
-    "${CMAKE_CURRENT_LIST_DIR}/common/msg_q.c")
+    "${CMAKE_CURRENT_LIST_DIR}/common/plugin_wrapper_msg_q.c")
   add_library("dds_security_${libname}_wrapper" SHARED "")
   if(CMAKE_GENERATOR MATCHES "Visual Studio")
     set_target_properties("dds_security_${libname}_wrapper" PROPERTIES LINK_FLAGS "/ignore:4099")
@@ -70,9 +70,11 @@ if(ENABLE_SSL)
   add_wrapper(cryptography dds_security_crypto)
 
   list(APPEND security_core_test_sources
-    "common/security_config.c"
-    "handshake.c"
+    "common/security_config_test_utils.c"
+    "common/handshake_test_utils.c"
+    "authentication.c"
     "config.c"
+    "handshake.c"
     "plugin_loading.c"
     "secure_communication.c"
   )

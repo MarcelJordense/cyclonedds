@@ -9,8 +9,8 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR BSD-3-Clause
  */
-#ifndef SECURITY_CORE_TEST_MSG_Q_H_
-#define SECURITY_CORE_TEST_MSG_Q_H_
+#ifndef SECURITY_CORE_PLUGIN_WRAPPER_MSG_Q_H_
+#define SECURITY_CORE_PLUGIN_WRAPPER_MSG_Q_H_
 
 #include "dds/dds.h"
 #include "dds/ddsrt/sync.h"
@@ -33,6 +33,7 @@ struct message {
     DDS_Security_GUID_t lguid;
     DDS_Security_GUID_t rguid;
     DDS_Security_ValidationResult_t result;
+    char * err_msg;
     DDS_Security_DataHolder token;
     void *instance;
     struct message *next;
@@ -49,7 +50,7 @@ struct dds_security_authentication_impl;
 
 void insert_message(struct message_queue *queue, struct message *msg);
 void add_message(struct message_queue *queue, message_kind_t kind, DDS_Security_IdentityHandle lidHandle, DDS_Security_IdentityHandle ridHandle, DDS_Security_IdentityHandle hsHandle,
-    const DDS_Security_GUID_t *lguid, const DDS_Security_GUID_t *rguid, DDS_Security_ValidationResult_t result,
+    const DDS_Security_GUID_t *lguid, const DDS_Security_GUID_t *rguid, DDS_Security_ValidationResult_t result, const char * err_msg,
     const DDS_Security_DataHolder *token, void *instance);
 void delete_message(struct message *msg);
 void init_message_queue(struct message_queue *queue);
@@ -58,4 +59,4 @@ int message_matched(struct message *msg, message_kind_t kind, DDS_Security_Ident
 struct message * take_message(struct message_queue *queue, message_kind_t kind, DDS_Security_IdentityHandle lidHandle, DDS_Security_IdentityHandle ridHandle, DDS_Security_IdentityHandle hsHandle, dds_duration_t timeout);
 
 
-#endif /* SECURITY_CORE_TEST_MSG_Q_H_ */
+#endif /* SECURITY_CORE_PLUGIN_WRAPPER_MSG_Q_H_ */

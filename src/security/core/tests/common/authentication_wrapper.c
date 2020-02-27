@@ -19,11 +19,8 @@
 #include "dds/security/dds_security_api.h"
 #include "dds/security/core/dds_security_utils.h"
 #include "authentication_wrapper.h"
-#include "msg_q.h"
-
-#define TEST_IDENTITY_CERTIFICATE_ALL_OK "testtext_IdentityCertificate_testtext"
-#define TEST_CA_CERTIFICATE_ALL_OK       "testtext_IdentityCA_testtext"
-#define TEST_PRIVATE_KEY_ALL_OK          "testtext_PrivateKey_testtext"
+#include "test_identity.h"
+#include "plugin_wrapper_msg_q.h"
 
 int32_t init_authentication(const char *argument, void **context);
 int32_t finalize_authentication(void *context);
@@ -51,9 +48,9 @@ struct dds_security_authentication_impl
 static struct dds_security_authentication_impl **auth_impl;
 static size_t auth_impl_count = 0;
 
-static const char *test_identity_certificate = TEST_IDENTITY_CERTIFICATE_ALL_OK;
-static const char *test_ca_certificate       = TEST_CA_CERTIFICATE_ALL_OK;
-static const char *test_private_key          = TEST_PRIVATE_KEY_ALL_OK;
+static const char *test_identity_certificate = TEST_IDENTITY_CERTIFICATE_DUMMY;
+static const char *test_private_key          = TEST_IDENTITY_PRIVATE_KEY_DUMMY;
+static const char *test_ca_certificate       = TEST_IDENTITY_CA_CERTIFICATE_DUMMY;
 
 static DDS_Security_ValidationResult_t test_validate_local_identity_all_ok(
     DDS_Security_GUID_t *adjusted_participant_guid,
@@ -118,7 +115,8 @@ static DDS_Security_ValidationResult_t test_validate_local_identity(
     {
       DDS_Security_ValidationResult_t result = impl->instance->validate_local_identity(
           impl->instance, local_identity_handle, adjusted_participant_guid, domain_id, participant_qos, candidate_participant_guid, ex);
-      add_message(&impl->msg_queue, MESSAGE_KIND_VALIDATE_LOCAL_IDENTITY, *local_identity_handle, 0, 0, adjusted_participant_guid, NULL, result, NULL, instance);
+      add_message(&impl->msg_queue, MESSAGE_KIND_VALIDATE_LOCAL_IDENTITY, *local_identity_handle,
+          0, 0, adjusted_participant_guid, NULL, result, ex ? ex->message : "", NULL, instance);
       return result;
     }
     case PLUGIN_MODE_ALL_OK:
@@ -201,7 +199,8 @@ static DDS_Security_ValidationResult_t test_validate_remote_identity(
       DDS_Security_ValidationResult_t result = impl->instance->validate_remote_identity(
         impl->instance, remote_identity_handle, local_auth_request_token, remote_auth_request_token,
         local_identity_handle, remote_identity_token, remote_participant_guid, ex);
-      add_message(&impl->msg_queue, MESSAGE_KIND_VALIDATE_REMOTE_IDENTITY, local_identity_handle, *remote_identity_handle, 0, NULL, remote_participant_guid, result, local_auth_request_token, instance);
+      add_message(&impl->msg_queue, MESSAGE_KIND_VALIDATE_REMOTE_IDENTITY, local_identity_handle,
+          *remote_identity_handle, 0, NULL, remote_participant_guid, result, ex ? ex->message : "", local_auth_request_token, instance);
       return result;
     }
 
@@ -228,7 +227,8 @@ static DDS_Security_ValidationResult_t test_begin_handshake_request(
       DDS_Security_ValidationResult_t result = impl->instance->begin_handshake_request(
         impl->instance, handshake_handle, handshake_message, initiator_identity_handle,
         replier_identity_handle, serialized_local_participant_data, ex);
-      add_message(&impl->msg_queue, MESSAGE_KIND_BEGIN_HANDSHAKE_REQUEST, initiator_identity_handle, replier_identity_handle, *handshake_handle, NULL, NULL, result, handshake_message, instance);
+      add_message(&impl->msg_queue, MESSAGE_KIND_BEGIN_HANDSHAKE_REQUEST, initiator_identity_handle,
+          replier_identity_handle, *handshake_handle, NULL, NULL, result, ex ? ex->message : "", handshake_message, instance);
       return result;
     }
 
@@ -256,7 +256,8 @@ static DDS_Security_ValidationResult_t test_begin_handshake_reply(
       DDS_Security_ValidationResult_t result = impl->instance->begin_handshake_reply(
         impl->instance, handshake_handle, handshake_message_out, handshake_message_in,
         initiator_identity_handle, replier_identity_handle, serialized_local_participant_data, ex);
-      add_message(&impl->msg_queue, MESSAGE_KIND_BEGIN_HANDSHAKE_REPLY, replier_identity_handle, initiator_identity_handle, *handshake_handle, NULL, NULL, result, handshake_message_out, instance);
+      add_message(&impl->msg_queue, MESSAGE_KIND_BEGIN_HANDSHAKE_REPLY, replier_identity_handle,
+          initiator_identity_handle, *handshake_handle, NULL, NULL, result, ex ? ex->message : "", handshake_message_out, instance);
       return result;
     }
 
@@ -279,7 +280,8 @@ static DDS_Security_ValidationResult_t test_process_handshake(
     case PLUGIN_MODE_WRAPPED:
     {
       DDS_Security_ValidationResult_t result = impl->instance->process_handshake(impl->instance, handshake_message_out, handshake_message_in, handshake_handle, ex);
-      add_message(&impl->msg_queue, MESSAGE_KIND_PROCESS_HANDSHAKE, 0, 0, handshake_handle, NULL, NULL, result, handshake_message_out, instance);
+      add_message(&impl->msg_queue, MESSAGE_KIND_PROCESS_HANDSHAKE, 0, 0, handshake_handle,
+          NULL, NULL, result, ex ? ex->message : "", handshake_message_out, instance);
       return result;
     }
 

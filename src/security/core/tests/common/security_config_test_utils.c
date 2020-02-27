@@ -26,7 +26,7 @@
 #include "dds/ddsrt/heap.h"
 #include "dds/ddsrt/string.h"
 #include "common/config_env.h"
-#include "security_config.h"
+#include "security_config_test_utils.h"
 
 static const char *governance_xml =
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
@@ -59,7 +59,7 @@ static const char *governance_xml =
     "  </domain_access_rules>"
     "</dds>";
 
-static const char * expand_lookup_vars(const char *name, void * data)
+const char * expand_lookup_vars(const char *name, void * data)
 {
   const struct kvp *vars = (struct kvp *)data;
   for (uint32_t i = 0; vars[i].key != NULL; i++)
@@ -68,6 +68,14 @@ static const char * expand_lookup_vars(const char *name, void * data)
       return vars[i].value;
   }
   return NULL;
+}
+
+const char * expand_lookup_vars_env(const char *name, void * data)
+{
+  const char *env;
+  if ((env = expand_lookup_vars (name, data)))
+    return env;
+  return ((ddsrt_getenv(name, &env)) == DDS_RETCODE_OK) ? env : NULL;
 }
 
 static char * smime_sign(char * ca_cert_path, char * ca_priv_key_path, const char * data)

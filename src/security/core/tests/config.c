@@ -21,11 +21,7 @@
 #include "dds/ddsi/ddsi_xqos.h"
 #include "dds/security/dds_security_api_defs.h"
 #include "common/config_env.h"
-#include "common/plugin_mock_common.h"
-
-#define TEST_IDENTITY_CERTIFICATE_ALL_OK "testtext_IdentityCertificate_testtext"
-#define TEST_CA_CERTIFICATE_ALL_OK       "testtext_IdentityCA_testtext"
-#define TEST_PRIVATE_KEY_ALL_OK          "testtext_PrivateKey_testtext"
+#include "common/test_identity.h"
 
 #define PROPLIST(init_auth, fin_auth, init_crypto, fin_crypto, init_ac, fin_ac, perm_ca, gov, perm, pre_str, post_str, binprops)         \
   "property_list={" pre_str                                             \
@@ -38,9 +34,9 @@
   "0:\"dds.sec.access.library.path\":\""WRAPPERLIB_PATH("dds_security_access_control_wrapper")"\","                         \
   "0:\"dds.sec.access.library.init\":\""init_ac"\","          \
   "0:\"dds.sec.access.library.finalize\":\""fin_ac"\","  \
-  "0:\"dds.sec.auth.identity_ca\":\"" TEST_CA_CERTIFICATE_ALL_OK "\","  \
-  "0:\"dds.sec.auth.private_key\":\"" TEST_PRIVATE_KEY_ALL_OK "\","     \
-  "0:\"dds.sec.auth.identity_certificate\":\"" TEST_IDENTITY_CERTIFICATE_ALL_OK "\"," \
+  "0:\"dds.sec.auth.identity_ca\":\"" TEST_IDENTITY_CA_CERTIFICATE_DUMMY "\","  \
+  "0:\"dds.sec.auth.private_key\":\"" TEST_IDENTITY_PRIVATE_KEY_DUMMY "\","     \
+  "0:\"dds.sec.auth.identity_certificate\":\"" TEST_IDENTITY_CERTIFICATE_DUMMY "\"," \
   "0:\"dds.sec.access.permissions_ca\":\""perm_ca"\","    \
   "0:\"dds.sec.access.governance\":\""gov"\","            \
   "0:\"dds.sec.access.permissions\":\""perm"\""           \
@@ -172,9 +168,9 @@ CU_Test(ddssec_config, all, .init = ddsrt_init, .fini = ddsrt_fini)
     "config: Domain/DDSSecurity/Authentication/Library[@path]: "WRAPPERLIB_PATH("dds_security_authentication_wrapper")"*",
     "config: Domain/DDSSecurity/Authentication/Library[@initFunction]: init_test_authentication_all_ok*",
     "config: Domain/DDSSecurity/Authentication/Library[@finalizeFunction]: finalize_test_authentication_all_ok*",
-    "config: Domain/DDSSecurity/Authentication/IdentityCertificate/#text: "TEST_IDENTITY_CERTIFICATE_ALL_OK"*",
-    "config: Domain/DDSSecurity/Authentication/IdentityCA/#text: "TEST_CA_CERTIFICATE_ALL_OK"*",
-    "config: Domain/DDSSecurity/Authentication/PrivateKey/#text: "TEST_PRIVATE_KEY_ALL_OK"*",
+    "config: Domain/DDSSecurity/Authentication/IdentityCertificate/#text: "TEST_IDENTITY_CERTIFICATE_DUMMY"*",
+    "config: Domain/DDSSecurity/Authentication/IdentityCA/#text: "TEST_IDENTITY_CA_CERTIFICATE_DUMMY"*",
+    "config: Domain/DDSSecurity/Authentication/PrivateKey/#text: "TEST_IDENTITY_PRIVATE_KEY_DUMMY"*",
     "config: Domain/DDSSecurity/Authentication/Password/#text: testtext_Password_testtext*",
     "config: Domain/DDSSecurity/Authentication/TrustedCADirectory/#text: testtext_Dir_testtext*",
     "config: Domain/DDSSecurity/AccessControl/Library/#text: "WRAPPERLIB_PATH("dds_security_access_control_wrapper")"*",
@@ -200,9 +196,9 @@ CU_Test(ddssec_config, all, .init = ddsrt_init, .fini = ddsrt_fini)
     "    <DDSSecurity>"
     "      <Authentication>"
     "        <Library initFunction=\"init_test_authentication_all_ok\" finalizeFunction=\"finalize_test_authentication_all_ok\" path=\"" WRAPPERLIB_PATH("dds_security_authentication_wrapper") "\"/>"
-    "        <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE_ALL_OK"</IdentityCertificate>"
-    "        <IdentityCA>"TEST_CA_CERTIFICATE_ALL_OK"</IdentityCA>"
-    "        <PrivateKey>"TEST_PRIVATE_KEY_ALL_OK"</PrivateKey>"
+    "        <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE_DUMMY"</IdentityCertificate>"
+    "        <IdentityCA>"TEST_IDENTITY_CA_CERTIFICATE_DUMMY"</IdentityCA>"
+    "        <PrivateKey>"TEST_IDENTITY_PRIVATE_KEY_DUMMY"</PrivateKey>"
     "        <Password>testtext_Password_testtext</Password>"
     "        <TrustedCADirectory>testtext_Dir_testtext</TrustedCADirectory>"
     "      </Authentication>"
@@ -242,9 +238,9 @@ CU_Test(ddssec_config, security, .init = ddsrt_init, .fini = ddsrt_fini)
     "config: Domain/DDSSecurity/Authentication/Library[@path]: "WRAPPERLIB_PATH("dds_security_authentication_wrapper")"*",
     "config: Domain/DDSSecurity/Authentication/Library[@initFunction]: init_test_authentication_all_ok*",
     "config: Domain/DDSSecurity/Authentication/Library[@finalizeFunction]: finalize_test_authentication_all_ok*",
-    "config: Domain/DDSSecurity/Authentication/IdentityCertificate/#text: "TEST_IDENTITY_CERTIFICATE_ALL_OK"*",
-    "config: Domain/DDSSecurity/Authentication/IdentityCA/#text: "TEST_CA_CERTIFICATE_ALL_OK"*",
-    "config: Domain/DDSSecurity/Authentication/PrivateKey/#text: "TEST_PRIVATE_KEY_ALL_OK"*",
+    "config: Domain/DDSSecurity/Authentication/IdentityCertificate/#text: "TEST_IDENTITY_CERTIFICATE_DUMMY"*",
+    "config: Domain/DDSSecurity/Authentication/IdentityCA/#text: "TEST_IDENTITY_CA_CERTIFICATE_DUMMY"*",
+    "config: Domain/DDSSecurity/Authentication/PrivateKey/#text: "TEST_IDENTITY_PRIVATE_KEY_DUMMY"*",
     "config: Domain/DDSSecurity/Authentication/Password/#text:  {}*",
     "config: Domain/DDSSecurity/Authentication/TrustedCADirectory/#text:  {}*",
     "config: Domain/DDSSecurity/AccessControl/Library/#text: "WRAPPERLIB_PATH("dds_security_access_control_wrapper")"*",
@@ -264,24 +260,26 @@ CU_Test(ddssec_config, security, .init = ddsrt_init, .fini = ddsrt_fini)
   };
 
   const char *sec_config =
-    "<Tracing><Verbosity>finest</></>"
-    "<DDSSecurity>"
-    "  <Authentication>"
-    "    <Library initFunction=\"init_test_authentication_all_ok\" finalizeFunction=\"finalize_test_authentication_all_ok\" path=\"" WRAPPERLIB_PATH("dds_security_authentication_wrapper") "\"/>"
-    "    <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE_ALL_OK"</IdentityCertificate>"
-    "    <IdentityCA>"TEST_CA_CERTIFICATE_ALL_OK"</IdentityCA>"
-    "    <PrivateKey>"TEST_PRIVATE_KEY_ALL_OK"</PrivateKey>"
-    "  </Authentication>"
-    "  <Cryptographic>"
-    "    <Library initFunction=\"init_test_cryptography_all_ok\" finalizeFunction=\"finalize_test_cryptography_all_ok\" path=\"" WRAPPERLIB_PATH("dds_security_cryptography_wrapper") "\"/>"
-    "  </Cryptographic>"
-    "  <AccessControl>"
-    "    <Library initFunction=\"init_test_access_control_all_ok\" finalizeFunction=\"finalize_test_access_control_all_ok\" path=\"" WRAPPERLIB_PATH("dds_security_access_control_wrapper") "\"/>"
-    "    <Governance>file:Governance.p7s</Governance>"
-    "    <PermissionsCA>file:Permissions_CA.pem</PermissionsCA>"
-    "    <Permissions>file:Permissions.p7s</Permissions>"
-    "  </AccessControl>"
-    "</DDSSecurity>";
+    "<Domain id=\"any\">"
+    "  <DDSSecurity>"
+    "    <Authentication>"
+    "      <Library initFunction=\"init_test_authentication_all_ok\" finalizeFunction=\"finalize_test_authentication_all_ok\" path=\"" WRAPPERLIB_PATH("dds_security_authentication_wrapper") "\"/>"
+    "      <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE_DUMMY"</IdentityCertificate>"
+    "      <IdentityCA>"TEST_IDENTITY_CA_CERTIFICATE_DUMMY"</IdentityCA>"
+    "      <PrivateKey>"TEST_IDENTITY_PRIVATE_KEY_DUMMY"</PrivateKey>"
+    "    </Authentication>"
+    "    <Cryptographic>"
+    "      <Library initFunction=\"init_test_cryptography_all_ok\" finalizeFunction=\"finalize_test_cryptography_all_ok\" path=\"" WRAPPERLIB_PATH("dds_security_cryptography_wrapper") "\"/>"
+    "    </Cryptographic>"
+    "    <AccessControl>"
+    "      <Library initFunction=\"init_test_access_control_all_ok\" finalizeFunction=\"finalize_test_access_control_all_ok\" path=\"" WRAPPERLIB_PATH("dds_security_access_control_wrapper") "\"/>"
+    "      <Governance>file:Governance.p7s</Governance>"
+    "      <PermissionsCA>file:Permissions_CA.pem</PermissionsCA>"
+    "      <Permissions>file:Permissions.p7s</Permissions>"
+    "    </AccessControl>"
+    "  </DDSSecurity>"
+    "  <Tracing><Verbosity>finest</></>"
+    "</Domain>";
 
   set_logger_exp(log_expected);
   domain = dds_create_domain(0, sec_config);
@@ -305,9 +303,9 @@ CU_Test(ddssec_config, deprecated, .init = ddsrt_init, .fini = ddsrt_fini)
     "config: Domain/DDSSecurity/Authentication/Library[@path]: "WRAPPERLIB_PATH("dds_security_authentication_wrapper")"*",
     "config: Domain/DDSSecurity/Authentication/Library[@initFunction]: init_test_authentication_all_ok*",
     "config: Domain/DDSSecurity/Authentication/Library[@finalizeFunction]: finalize_test_authentication_all_ok*",
-    "config: Domain/DDSSecurity/Authentication/IdentityCertificate/#text: "TEST_IDENTITY_CERTIFICATE_ALL_OK"*",
-    "config: Domain/DDSSecurity/Authentication/IdentityCA/#text: "TEST_CA_CERTIFICATE_ALL_OK"*",
-    "config: Domain/DDSSecurity/Authentication/PrivateKey/#text: "TEST_PRIVATE_KEY_ALL_OK"*",
+    "config: Domain/DDSSecurity/Authentication/IdentityCertificate/#text: "TEST_IDENTITY_CERTIFICATE_DUMMY"*",
+    "config: Domain/DDSSecurity/Authentication/IdentityCA/#text: "TEST_IDENTITY_CA_CERTIFICATE_DUMMY"*",
+    "config: Domain/DDSSecurity/Authentication/PrivateKey/#text: "TEST_IDENTITY_PRIVATE_KEY_DUMMY"*",
     "config: Domain/DDSSecurity/Authentication/Password/#text: testtext_Password_testtext*",
     "config: Domain/DDSSecurity/Authentication/TrustedCADirectory/#text: testtext_Dir_testtext*",
     "config: Domain/DDSSecurity/AccessControl/Library/#text: "WRAPPERLIB_PATH("dds_security_access_control_wrapper")"*",
@@ -332,9 +330,9 @@ CU_Test(ddssec_config, deprecated, .init = ddsrt_init, .fini = ddsrt_fini)
     "    <DDSSecurity>"
     "      <Authentication>"
     "        <Library initFunction=\"init_test_authentication_all_ok\" finalizeFunction=\"finalize_test_authentication_all_ok\" path=\"" WRAPPERLIB_PATH("dds_security_authentication_wrapper") "\"/>"
-    "        <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE_ALL_OK"</IdentityCertificate>"
-    "        <IdentityCA>"TEST_CA_CERTIFICATE_ALL_OK"</IdentityCA>"
-    "        <PrivateKey>"TEST_PRIVATE_KEY_ALL_OK"</PrivateKey>"
+    "        <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE_DUMMY"</IdentityCertificate>"
+    "        <IdentityCA>"TEST_IDENTITY_CA_CERTIFICATE_DUMMY"</IdentityCA>"
+    "        <PrivateKey>"TEST_IDENTITY_PRIVATE_KEY_DUMMY"</PrivateKey>"
     "        <Password>testtext_Password_testtext</Password>"
     "        <TrustedCADirectory>testtext_Dir_testtext</TrustedCADirectory>"
     "      </Authentication>"
@@ -387,9 +385,9 @@ CU_Test(ddssec_config, qos, .init = ddsrt_init, .fini = ddsrt_fini)
   dds_qset_prop(qos, "dds.sec.access.library.path", ""WRAPPERLIB_PATH("dds_security_access_control_wrapper")"");
   dds_qset_prop(qos, "dds.sec.access.library.init", "init_test_access_control_all_ok");
   dds_qset_prop(qos, "dds.sec.access.library.finalize", "finalize_test_access_control_all_ok");
-  dds_qset_prop(qos, "dds.sec.auth.identity_ca", ""TEST_CA_CERTIFICATE_ALL_OK"");
-  dds_qset_prop(qos, "dds.sec.auth.private_key", ""TEST_PRIVATE_KEY_ALL_OK"");
-  dds_qset_prop(qos, "dds.sec.auth.identity_certificate", ""TEST_IDENTITY_CERTIFICATE_ALL_OK"");
+  dds_qset_prop(qos, "dds.sec.auth.identity_ca", ""TEST_IDENTITY_CA_CERTIFICATE_DUMMY"");
+  dds_qset_prop(qos, "dds.sec.auth.private_key", ""TEST_IDENTITY_PRIVATE_KEY_DUMMY"");
+  dds_qset_prop(qos, "dds.sec.auth.identity_certificate", ""TEST_IDENTITY_CERTIFICATE_DUMMY"");
   dds_qset_prop(qos, "dds.sec.access.permissions_ca", "file:Permissions_CA.pem");
   dds_qset_prop(qos, "dds.sec.access.governance", "file:Governance.p7s");
   dds_qset_prop(qos, "dds.sec.access.permissions", "file:Permissions.p7s");
@@ -434,9 +432,9 @@ CU_Test(ddssec_config, qos_props, .init = ddsrt_init, .fini = ddsrt_fini)
   dds_qset_prop(qos, "dds.sec.access.library.path", ""WRAPPERLIB_PATH("dds_security_access_control_wrapper")"");
   dds_qset_prop(qos, "dds.sec.access.library.init", "init_test_access_control_all_ok");
   dds_qset_prop(qos, "dds.sec.access.library.finalize", "finalize_test_access_control_all_ok");
-  dds_qset_prop(qos, "dds.sec.auth.identity_ca", TEST_CA_CERTIFICATE_ALL_OK);
-  dds_qset_prop(qos, "dds.sec.auth.private_key", TEST_PRIVATE_KEY_ALL_OK);
-  dds_qset_prop(qos, "dds.sec.auth.identity_certificate", TEST_IDENTITY_CERTIFICATE_ALL_OK);
+  dds_qset_prop(qos, "dds.sec.auth.identity_ca", TEST_IDENTITY_CA_CERTIFICATE_DUMMY);
+  dds_qset_prop(qos, "dds.sec.auth.private_key", TEST_IDENTITY_PRIVATE_KEY_DUMMY);
+  dds_qset_prop(qos, "dds.sec.auth.identity_certificate", TEST_IDENTITY_CERTIFICATE_DUMMY);
   dds_qset_prop(qos, "dds.sec.access.permissions_ca", "file:Permissions_CA.pem");
   dds_qset_prop(qos, "dds.sec.access.governance", "file:Governance.p7s");
   dds_qset_prop(qos, "dds.sec.access.permissions", "file:Permissions.p7s");
@@ -480,9 +478,9 @@ CU_Test(ddssec_config, config_qos, .init = ddsrt_init, .fini = ddsrt_fini)
     "<Tracing><Verbosity>finest</></>"
     "<DDSSecurity>"
     "  <Authentication>"
-    "    <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE_ALL_OK"</IdentityCertificate>"
-    "    <IdentityCA>"TEST_CA_CERTIFICATE_ALL_OK"</IdentityCA>"
-    "    <PrivateKey>"TEST_PRIVATE_KEY_ALL_OK"</PrivateKey>"
+    "    <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE_DUMMY"</IdentityCertificate>"
+    "    <IdentityCA>"TEST_IDENTITY_CA_CERTIFICATE_DUMMY"</IdentityCA>"
+    "    <PrivateKey>"TEST_IDENTITY_PRIVATE_KEY_DUMMY"</PrivateKey>"
     "  </Authentication>"
     "  <AccessControl>"
     "    <Governance>file:Governance.p7s</Governance>"
@@ -501,9 +499,9 @@ CU_Test(ddssec_config, config_qos, .init = ddsrt_init, .fini = ddsrt_fini)
   dds_qset_prop(qos, DDS_SEC_PROP_ACCESS_LIBRARY_PATH, WRAPPERLIB_PATH("dds_security_access_control_wrapper"));
   dds_qset_prop(qos, DDS_SEC_PROP_ACCESS_LIBRARY_INIT, "init_test_access_control_all_ok");
   dds_qset_prop(qos, DDS_SEC_PROP_ACCESS_LIBRARY_FINALIZE, "finalize_test_access_control_all_ok");
-  dds_qset_prop(qos, "dds.sec.auth.identity_ca", TEST_CA_CERTIFICATE_ALL_OK);
-  dds_qset_prop(qos, "dds.sec.auth.private_key", TEST_PRIVATE_KEY_ALL_OK);
-  dds_qset_prop(qos, "dds.sec.auth.identity_certificate", TEST_IDENTITY_CERTIFICATE_ALL_OK);
+  dds_qset_prop(qos, "dds.sec.auth.identity_ca", TEST_IDENTITY_CA_CERTIFICATE_DUMMY);
+  dds_qset_prop(qos, "dds.sec.auth.private_key", TEST_IDENTITY_PRIVATE_KEY_DUMMY);
+  dds_qset_prop(qos, "dds.sec.auth.identity_certificate", TEST_IDENTITY_CERTIFICATE_DUMMY);
   dds_qset_prop(qos, "dds.sec.access.permissions_ca", "file:QOS_Permissions_CA.pem");
   dds_qset_prop(qos, "dds.sec.access.governance", "file:QOS_Governance.p7s");
   dds_qset_prop(qos, "dds.sec.access.permissions", "file:QOS_Permissions.p7s");
@@ -539,9 +537,9 @@ CU_Test(ddssec_config, other_prop, .init = ddsrt_init, .fini = ddsrt_fini)
     "<DDSSecurity>"
     "  <Authentication>"
     "    <Library initFunction=\"init_test_authentication_all_ok\" finalizeFunction=\"finalize_test_authentication_all_ok\" path=\"" WRAPPERLIB_PATH("dds_security_authentication_wrapper") "\"/>"
-    "    <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE_ALL_OK"</IdentityCertificate>"
-    "    <IdentityCA>"TEST_CA_CERTIFICATE_ALL_OK"</IdentityCA>"
-    "    <PrivateKey>"TEST_PRIVATE_KEY_ALL_OK"</PrivateKey>"
+    "    <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE_DUMMY"</IdentityCertificate>"
+    "    <IdentityCA>"TEST_IDENTITY_CA_CERTIFICATE_DUMMY"</IdentityCA>"
+    "    <PrivateKey>"TEST_IDENTITY_PRIVATE_KEY_DUMMY"</PrivateKey>"
     "    <Password>testtext_Password_testtext</Password>"
     "    <TrustedCADirectory>testtext_Dir_testtext</TrustedCADirectory>"
     "  </Authentication>"
@@ -603,9 +601,9 @@ CU_Test(ddssec_config, qos_invalid, .init = ddsrt_init, .fini = ddsrt_fini)
     "<Tracing><Verbosity>finest</></>"
     "<DDSSecurity>"
     "  <Authentication>"
-    "    <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE_ALL_OK"</IdentityCertificate>"
-    "    <IdentityCA>"TEST_CA_CERTIFICATE_ALL_OK"</IdentityCA>"
-    "    <PrivateKey>"TEST_PRIVATE_KEY_ALL_OK"</PrivateKey>"
+    "    <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE_DUMMY"</IdentityCertificate>"
+    "    <IdentityCA>"TEST_IDENTITY_CA_CERTIFICATE_DUMMY"</IdentityCA>"
+    "    <PrivateKey>"TEST_IDENTITY_PRIVATE_KEY_DUMMY"</PrivateKey>"
     "  </Authentication>"
     "  <AccessControl>"
     "    <Governance>file:Governance.p7s</Governance>"

@@ -34,8 +34,8 @@
 #include "dds/security/dds_security_api.h"
 
 #include "common/config_env.h"
-#include "common/plugin_mock_common.h"
-#include "common/security_config.h"
+#include "common/test_identity.h"
+#include "common/security_config_test_utils.h"
 #include "common/cryptography_wrapper.h"
 
 #include "SecurityCoreTests.h"
@@ -53,13 +53,12 @@ static const char *config =
     "${CYCLONEDDS_URI}${CYCLONEDDS_URI:+,}"
     "<Discovery><ExternalDomainId>0</ExternalDomainId></Discovery>"
     "<Domain id=\"any\">"
-    "  <Tracing><Verbosity>finest</></>"
     "  <DDSSecurity>"
     "    <Authentication>"
     "      <Library finalizeFunction=\"finalize_authentication\" initFunction=\"init_authentication\" />"
     "      <IdentityCertificate>"TEST_IDENTITY_CERTIFICATE"</IdentityCertificate>"
-    "      <IdentityCA>"TEST_CA_CERTIFICATE"</IdentityCA>"
-    "      <PrivateKey>"TEST_PRIVATE_KEY"</PrivateKey>"
+    "      <PrivateKey>"TEST_IDENTITY_PRIVATE_KEY"</PrivateKey>"
+    "      <IdentityCA>"TEST_IDENTITY_CA_CERTIFICATE"</IdentityCA>"
     "      <Password></Password>"
     "      <TrustedCADirectory>.</TrustedCADirectory>"
     "    </Authentication>"
@@ -105,18 +104,6 @@ struct domain_sec_config {
   DDS_Security_BasicProtectionKind payload_pk;
 };
 
-
-static const char * expand_lookup_vars(const char *name, void * data)
-{
-  const char *env = NULL;
-  const struct kvp *vars = (struct kvp *)data;
-  for (uint32_t i = 0; vars[i].key != NULL; i++)
-  {
-    if (!strcmp(vars[i].key, name))
-      return vars[i].value;
-  }
-  return ((ddsrt_getenv(name, &env)) == DDS_RETCODE_OK) ? env : NULL;
-}
 
 static struct dds_security_cryptography_impl * get_crypto_context(dds_entity_t participant)
 {
@@ -234,12 +221,12 @@ static void test_init(const struct domain_sec_config * domain_config, size_t n_s
     { NULL, NULL }
   };
 
-  char *conf_pub = ddsrt_expand_vars (config, &expand_lookup_vars, config_vars);
+  char *conf_pub = ddsrt_expand_vars (config, &expand_lookup_vars_env, config_vars);
   create_dom_pp_pubsub (DDS_DOMAINID_PUB, conf_pub, domain_config, n_pub_domains, n_pub_participants,
       g_pub_domains, g_pub_participants, g_pub_publishers, &dds_create_publisher);
   dds_free (conf_pub);
 
-  char *conf_sub = ddsrt_expand_vars (config, &expand_lookup_vars, config_vars);
+  char *conf_sub = ddsrt_expand_vars (config, &expand_lookup_vars_env, config_vars);
   create_dom_pp_pubsub (DDS_DOMAINID_SUB, conf_sub, domain_config, n_sub_domains, n_sub_participants,
       g_sub_domains, g_sub_participants, g_sub_subscribers, &dds_create_subscriber);
   dds_free (conf_sub);
@@ -478,13 +465,13 @@ CU_Theory((size_t n_dom, size_t n_pp, size_t n_rd), ddssec_secure_communication,
   }
 }
 
-CU_TheoryDataPoints(ddssec_secure_communication, multiple_writers) = {
+CU_TheoryDataPoints(ddssec_secure_communication, multiple_readers_writers) = {
     CU_DataPoints(size_t, 1, 1, 2), /* number of reader domains */
     CU_DataPoints(size_t, 1, 3, 3), /* number of readers per domain */
     CU_DataPoints(size_t, 1, 1, 2), /* number of writer domains */
     CU_DataPoints(size_t, 1, 3, 3), /* number of writers per domain */
 };
-CU_Theory((size_t n_rd_dom, size_t n_rd, size_t n_wr_dom, size_t n_wr), ddssec_secure_communication, multiple_writers, .timeout = 60)
+CU_Theory((size_t n_rd_dom, size_t n_rd, size_t n_wr_dom, size_t n_wr), ddssec_secure_communication, multiple_readers_writers, .timeout = 60)
 {
   DDS_Security_ProtectionKind metadata_pk[] = { PK_SOA, PK_EOA };
   for (size_t metadata = 0; metadata < sizeof (metadata_pk) / sizeof (metadata_pk[0]); metadata++)
@@ -492,12 +479,3 @@ CU_Theory((size_t n_rd_dom, size_t n_rd, size_t n_wr_dom, size_t n_wr), ddssec_s
     test_multiple_writers (n_rd_dom, n_rd, n_wr_dom, n_wr, metadata_pk[metadata]);
   }
 }
-
-#undef BE
-#undef BS
-#undef BN
-#undef EOA
-#undef SOA
-#undef E
-#undef S
-#undef N

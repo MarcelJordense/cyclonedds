@@ -18,7 +18,7 @@
 #include "dds/ddsi/ddsi_domaingv.h"
 #include "dds/security/dds_security_api.h"
 #include "dds/security/core/dds_security_utils.h"
-#include "msg_q.h"
+#include "plugin_wrapper_msg_q.h"
 
 void insert_message(struct message_queue *queue, struct message *msg)
 {
@@ -34,7 +34,7 @@ void insert_message(struct message_queue *queue, struct message *msg)
 }
 
 void add_message(struct message_queue *queue, message_kind_t kind, DDS_Security_IdentityHandle lidHandle, DDS_Security_IdentityHandle ridHandle, DDS_Security_IdentityHandle hsHandle,
-    const DDS_Security_GUID_t *lguid, const DDS_Security_GUID_t *rguid, DDS_Security_ValidationResult_t result,
+    const DDS_Security_GUID_t *lguid, const DDS_Security_GUID_t *rguid, DDS_Security_ValidationResult_t result, const char * err_msg,
     const DDS_Security_DataHolder *token, void *instance)
 {
   struct message *msg = ddsrt_malloc(sizeof(*msg));
@@ -44,6 +44,7 @@ void add_message(struct message_queue *queue, message_kind_t kind, DDS_Security_
   msg->ridHandle = ridHandle;
   msg->hsHandle = hsHandle;
   msg->result = result;
+  msg->err_msg = ddsrt_strdup (err_msg ? err_msg : "");
   if (lguid)
     memcpy(&msg->lguid, lguid, sizeof(msg->lguid));
   if (rguid)
@@ -60,6 +61,7 @@ void delete_message(struct message *msg)
   if (msg)
   {
     DDS_Security_DataHolder_deinit(&msg->token);
+    ddsrt_free(msg->err_msg);
     ddsrt_free(msg);
   }
 }
